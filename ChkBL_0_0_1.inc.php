@@ -329,6 +329,9 @@ class ChkBL_0_0_1 {
 }
 endif; // if ( ! class_exists() ) :
 
+// TODO: move class IPReservedCheck_0_0_1 to its own file;
+// it remains here while cli test code near end uses it
+
 /**
  * A class to check whether an IPv4 address is
  * routable, interna;||private, or loopback

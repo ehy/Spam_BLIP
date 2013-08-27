@@ -1368,20 +1368,21 @@ class Spam_BLIP_class {
 		if ( self::get_hitlog_option() != 'false' ) {
 			if ( is_array($this->rbl_result[0]) ) {
 				$doms = $this->chkbl->get_dom_array();
-				$fmt = "denied address %s, list at '%s', result %s";
-				$fmt = sprintf($fmt, $addr,
+				$fmt =
+					"%s denied for address %s, list at '%s', result %s";
+				$fmt = sprintf($fmt, $statype, $addr,
 					$doms[$this->rbl_result[0][0]][0],
 					$this->rbl_result[0][1]);
 				self::errlog($fmt);
 			} else {
-				self::errlog("denied address " . $addr);
+				self::errlog($statype . " denied for address " . $addr);
 			}
 		}		
 		
 		// optionally die
 		if ( self::get_bailout_option() != 'false' ) {
 			// Allow additional action from elsewhere, however unlikely.
-			do_action('spamblip_hit_bailout', $addr);
+			do_action('spamblip_hit_bailout', $addr, $statype);
 			// TODO: make message text an option
 			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
 		}
