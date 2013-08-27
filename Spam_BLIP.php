@@ -923,8 +923,7 @@ class Spam_BLIP_class {
 			</p><p>
 			The "Use" option enables a check in any available
 			stored data; if a hit is found there then the
-			DNS lookup is not performed.'
-			, 'spambl_l10n'));
+			DNS lookup is not performed.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
@@ -984,8 +983,7 @@ class Spam_BLIP_class {
 			when the connecting IP address is blacklisted. The
 			default is to only disable comments, and allow the
 			page to be produced normally.
-			'
-			, 'spambl_l10n'));
+			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
@@ -1185,7 +1183,7 @@ class Spam_BLIP_class {
 		}
 		
 		if ( ! $this->chkbl ) {
-			self::errlog('cannot allocate BL check object');
+			self::errlog(__('cannot allocate BL check object', 'spambl_l10n'));
 			return false;
 		}
 		
