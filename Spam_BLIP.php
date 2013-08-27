@@ -150,12 +150,14 @@ class Spam_BLIP_class {
 	const optrecdata = 'recdata';
 	// use rbl hit data?
 	const optusedata = 'usedata';
+	// optplugwdg -- use plugin's widget
+	const optplugwdg = 'widget'; // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
 	const optipnglog = 'ip_ng';
 	// log blacklist hits?
 	const optbliplog = 'log_hit';
-	// optplugwdg -- use plugin's widget
-	const optplugwdg = 'widget'; // plugin widget
+	// bail out (wp_die()) on blacklist hits?
+	const optbailout = 'bailout';
 	// delete options on uninstall
 	const optdelopts = 'delopts';
 	
@@ -172,12 +174,14 @@ class Spam_BLIP_class {
 	const defrecdata = 'true';
 	// use rbl hit data?
 	const defusedata = 'true';
+	// optplugwdg -- use plugin's widget
+	const defplugwdg = 'false';  // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
 	const defipnglog = 'true';
 	// log blacklist hits?
 	const defbliplog = 'false';
-	// optplugwdg -- use plugin's widget
-	const defplugwdg = 'false';  // plugin widget
+	// bail out (wp_die()) on blacklist hits?
+	const defbailout = 'false';
 	// delete options on uninstall
 	const defdelopts = 'true';
 	
@@ -285,6 +289,7 @@ class Spam_BLIP_class {
 			self::optplugwdg => self::defplugwdg,
 			self::optipnglog => self::defipnglog,
 			self::optbliplog => self::defbliplog,
+			self::optbailout => self::defbailout,
 			self::optdelopts => self::defdelopts,
 		);
 		
@@ -408,6 +413,11 @@ class Spam_BLIP_class {
 					self::optbliplog,
 					$items[self::optbliplog],
 					array($this, 'put_bliplog_opt'));
+			$fields[$nf++] = new $Cf(self::optbailout,
+					self::wt(__('Bail out on blacklisted IP:', 'spambl_l10n')),
+					self::optbailout,
+					$items[self::optbailout],
+					array($this, 'put_bailout_opt'));
 
 			// misc
 			$sections[$ns++] = new $Cs($fields,
@@ -814,6 +824,7 @@ class Spam_BLIP_class {
 				case self::optplugwdg:
 				case self::optipnglog:
 				case self::optbliplog:
+				case self::optbailout:
 				case self::optdelopts:
 					if ( $ot != 'true' && $ot != 'false' ) {
 						$e = sprintf('bad option: %s[%s]', $k, $v);
@@ -930,7 +941,7 @@ class Spam_BLIP_class {
 		}
 
 		$t = self::wt(__('The "included widget" option selects 
-			whether the widget included with the plugin is
+			whether the multi-widget included with the plugin is
 			enabled. The widget will display some of the
 			stored data, if that is enabled. You should consider
 			whether you want that data on public display, but
@@ -950,13 +961,11 @@ class Spam_BLIP_class {
 			is not performed, as it would be pointless, and a
 			message is issued to the error log if this option
 			is set.
-			</p><p>
 			For a site on the "real" Internet, there is probably
 			no reason to turn this logging off. In fact, if
 			such log messages are seen, the hosting administrator
 			or technical contact should be notified (and their response
 			should be that a fix is on the way).
-			</p><p>
 			This option should be off when developing a site on
 			a private network or single machine, because in this
 			case error log messages are not needed. The plugin
@@ -969,6 +978,12 @@ class Spam_BLIP_class {
 			in the error log. New plugin users might like to
 			enable this temporarily to see the effect the plugin
 			has had.
+			</p><p>
+			The "Bail out on blacklisted" option will have the
+			plugin terminate the blog output (with "wp_die()")
+			when the connecting IP address is blacklisted. The
+			default is to only disable comments, and allow the
+			page to be produced normally.
 			'
 			, 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
@@ -1077,6 +1092,13 @@ class Spam_BLIP_class {
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
+	// callback, die blacklist hits?
+	public function put_bailout_opt($a) {
+		$tt = self::wt(__('Bail (wp_die()) on blacklist hits', 'spambl_l10n'));
+		$k = self::optbailout;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
 	// callback, install section field: opt delete
 	public function put_del_opts($a) {
 		$tt = self::wt(__('Permanently delete settings (clean db)', 'spambl_l10n'));
@@ -1120,6 +1142,11 @@ class Spam_BLIP_class {
 	// for whether to log BL hits
 	public static function get_hitlog_option() {
 		return self::opt_by_name(self::optbliplog);
+	}
+
+	// for whether to die on BL hits
+	public static function get_bailout_option() {
+		return self::opt_by_name(self::optbailout);
 	}
 
 	// for whether to store hit data
@@ -1195,29 +1222,31 @@ class Spam_BLIP_class {
 		// (wp-comments-post.php, last in if-chain)
 	}
 
-	// add_action('pre_comment_on_post', $scf, 1);
+	// add_action('comment_closed', $scf, 1);
 	public function action_comment_closed($comment_post_ID) {
 		// this gets called if WP core 'comments_open()' is false,
 		// but we only act here if our filter returned false
 		// and found an rbl hit.
-		if ( self::get_comments_open_option() != 'true' ) {
-			return;
+		if ( false ) { // not at all sure about code paths to this!
+			if ( self::get_comments_open_option() != 'true' ) {
+				return;
+			}
+			
+			$r = $this->get_rbl_result();
+			
+			// was rbl check called? did it fail internally
+			if ( $r === null ) {
+				return;
+			}		
+			// was simple rbl check false?
+			if ( $r === false ) {
+				return;
+			}		
+			
+			// TODO: make option
+			$txt = __('<h1>DENIED</h1><h3>IP address %s is associated with spam</h3>', 'spambl_l10n');
+			printf($txt, $_SERVER["REMOTE_ADDR"]);
 		}
-		
-		$r = $this->get_rbl_result();
-		
-		// was rbl check called? did it fail internally
-		if ( $r === null ) {
-			return;
-		}		
-		// was simple rbl check false?
-		if ( $r === false ) {
-			return;
-		}		
-		
-		// TODO: make option
-		$txt = __('<h1>DENIED</h1><h3>IP address %s is associated with spam</h3>', 'spambl_l10n');
-		printf($txt, $_SERVER["REMOTE_ADDR"]);
 	}
 
 	// helper: get previous BL result, return:
@@ -1343,7 +1372,7 @@ class Spam_BLIP_class {
 				$doms = $this->chkbl->get_dom_array();
 				$fmt = "denied address %s, list at '%s', result %s";
 				$fmt = sprintf($fmt, $addr,
-					$doms[$this->rbl_result[0][0]],
+					$doms[$this->rbl_result[0][0]][0],
 					$this->rbl_result[0][1]);
 				self::errlog($fmt);
 			} else {
@@ -1351,6 +1380,14 @@ class Spam_BLIP_class {
 			}
 		}		
 		
+		// optionally die
+		if ( self::get_bailout_option() != 'false' ) {
+			// Allow additional action from elsewhere, however unlikely.
+			do_action('spamblip_hit_bailout', $addr);
+			// TODO: make message text an option
+			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
+		}
+
 		return $ret;
 	}
 } // End class Spam_BLIP_class
