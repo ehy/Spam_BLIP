@@ -1,0 +1,11 @@
+!*.php .gitignore *.css Makefile readme.txt
+flash-plugin-strings
+apply_filters
+current_user_can
+URL-git
+bak
+*.geany
+*.template
+wordpress-docs
+other
+svn-url
