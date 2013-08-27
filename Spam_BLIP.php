@@ -150,10 +150,12 @@ class Spam_BLIP_class {
 	const optrecdata = 'recdata';
 	// use rbl hit data?
 	const optusedata = 'usedata';
-	// optplugwdg -- use plugin's widget
-	const optplugwdg = 'widget'; // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
 	const optipnglog = 'ip_ng';
+	// log blacklist hits?
+	const optbliplog = 'log_hit';
+	// optplugwdg -- use plugin's widget
+	const optplugwdg = 'widget'; // plugin widget
 	// delete options on uninstall
 	const optdelopts = 'delopts';
 	
@@ -170,10 +172,12 @@ class Spam_BLIP_class {
 	const defrecdata = 'true';
 	// use rbl hit data?
 	const defusedata = 'true';
-	// optplugwdg -- use plugin's widget
-	const defplugwdg = 'false';  // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
 	const defipnglog = 'true';
+	// log blacklist hits?
+	const defbliplog = 'false';
+	// optplugwdg -- use plugin's widget
+	const defplugwdg = 'false';  // plugin widget
 	// delete options on uninstall
 	const defdelopts = 'true';
 	
@@ -181,10 +185,13 @@ class Spam_BLIP_class {
 	const aclv = '0_0_2a';
 
 	// object of class to handle options under WordPress
-	protected $opt;
+	protected $opt = null;
 	
-	// An IPReservedCheck_0_0_1 instance (class def below)
-	protected $ipchk;
+	// An instance of the blacklist check class ChkBL_0_0_1
+	protected $chkbl = null;
+
+	// An instance of the bad IP check class IPReservedCheck_0_0_1
+	protected $ipchk = null;
 	protected $ipchk_done = false;
 
 	// array of rbl lookup result is put here for reference
@@ -277,6 +284,7 @@ class Spam_BLIP_class {
 			self::optusedata => self::defusedata,
 			self::optplugwdg => self::defplugwdg,
 			self::optipnglog => self::defipnglog,
+			self::optbliplog => self::defbliplog,
 			self::optdelopts => self::defdelopts,
 		);
 		
@@ -395,6 +403,11 @@ class Spam_BLIP_class {
 					self::optipnglog,
 					$items[self::optipnglog],
 					array($this, 'put_iplog_opt'));
+			$fields[$nf++] = new $Cf(self::optbliplog,
+					self::wt(__('Log blacklisted IP addresses:', 'spambl_l10n')),
+					self::optbliplog,
+					$items[self::optbliplog],
+					array($this, 'put_bliplog_opt'));
 
 			// misc
 			$sections[$ns++] = new $Cs($fields,
@@ -800,6 +813,7 @@ class Spam_BLIP_class {
 				case self::optusedata:
 				case self::optplugwdg:
 				case self::optipnglog:
+				case self::optbliplog:
 				case self::optdelopts:
 					if ( $ot != 'true' && $ot != 'false' ) {
 						$e = sprintf('bad option: %s[%s]', $k, $v);
@@ -948,6 +962,13 @@ class Spam_BLIP_class {
 			case error log messages are not needed. The plugin
 			will still check the address and skip the blacklist
 			DNS lookup if the address is reserved.
+			</p><p>
+			The "Log blacklisted IP addresses" option selects logging
+			of blacklist hits with the remote IP address. This
+			is only informative, and will add unneeded lines
+			in the error log. New plugin users might like to
+			enable this temporarily to see the effect the plugin
+			has had.
 			'
 			, 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
@@ -1042,10 +1063,17 @@ class Spam_BLIP_class {
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
-	// callback, use plugin's widget?
+	// callback, log non-routable remate addrs?
 	public function put_iplog_opt($a) {
 		$tt = self::wt(__('Log bad addresses in "REMOTE_ADDR"', 'spambl_l10n'));
 		$k = self::optipnglog;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
+	// callback, log blacklist hits?
+	public function put_bliplog_opt($a) {
+		$tt = self::wt(__('Log blacklist hits', 'spambl_l10n'));
+		$k = self::optbliplog;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
@@ -1079,22 +1107,27 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::optverbose);
 	}
 
-	// for settings section descriptions
+	// for whether to use widget
 	public static function get_widget_option() {
 		return self::opt_by_name(self::optplugwdg);
 	}
 
-	// for settings section descriptions
+	// for whether to log reserved remote addresses
 	public static function get_ip_log_option() {
 		return self::opt_by_name(self::optipnglog);
 	}
 
-	// for settings section descriptions
+	// for whether to log BL hits
+	public static function get_hitlog_option() {
+		return self::opt_by_name(self::optbliplog);
+	}
+
+	// for whether to store hit data
 	public static function get_recdata_option() {
 		return self::opt_by_name(self::optrecdata);
 	}
 
-	// for settings section descriptions
+	// for whether to use stored data
 	public static function get_usedata_option() {
 		return self::opt_by_name(self::optusedata);
 	}
@@ -1104,6 +1137,7 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::optcommflt);
 	}
 
+	// should the filter_pings_open() rbl check be done
 	public static function get_pings_open_option() {
 		return self::opt_by_name(self::optpingflt);
 	}
@@ -1113,16 +1147,17 @@ class Spam_BLIP_class {
 	 */
 
 	public function bl_check_addr($addr) {
-		$t = false;
-		
-		// TODO: add options
-		if ( false ) {
-			$t = new ChkBL_0_0_1(ChkBL_0_0_1::get_strict_array());
-		} else {
-			$t = new ChkBL_0_0_1();
+		if ( $this->chkbl === null ) {
+			// TODO: add strict options
+			if ( false ) {
+				$this->chkbl =
+					new ChkBL_0_0_1(ChkBL_0_0_1::get_strict_array());
+			} else {
+				$this->chkbl = new ChkBL_0_0_1();
+			}
 		}
 		
-		if ( ! $t ) {
+		if ( ! $this->chkbl ) {
 			self::errlog('cannot allocate BL check object');
 			return false;
 		}
@@ -1130,7 +1165,7 @@ class Spam_BLIP_class {
 		$ret = false;
 		// TODO: add options
 		if ( true ) {
-			$this->rbl_result = $t->check_all($addr, 1);
+			$this->rbl_result = $this->chkbl->check_all($addr, 1);
 			if ( ! empty($this->rbl_result) ) {
 				$ret = $this->rbl_result[0][2];
 			} else {
@@ -1142,7 +1177,8 @@ class Spam_BLIP_class {
 			// other code finds it false, this code has not
 			// been reached
 			$this->rbl_result = array();
-			$ret = $t->check_simple($addr);
+			$ret = $this->chkbl->check_simple($addr);
+			// DEVEL: remove
 			if ( false && $addr === '192.168.1.187' ) {
 				$ret = true;
 			}
@@ -1294,14 +1330,22 @@ class Spam_BLIP_class {
 		}
 		$posttime = self::best_time();
 		
-		// At this point, false return is settled
+		// We have a hit!
 		$ret = false;
 		
 		// TODO: record stats
-		// DEBUG: remove after testing
-		if ( is_array($this->rbl_result) ) {
+		if ( self::get_recdata_option() != 'false' ) {
+		}
+
+		// optional hit logging
+		if ( self::get_hitlog_option() != 'false' ) {
 			if ( is_array($this->rbl_result[0]) ) {
-				self::errlog("denied address " . $addr);
+				$doms = $this->chkbl->get_dom_array();
+				$fmt = "denied address %s, list at '%s', result %s";
+				$fmt = sprintf($fmt, $addr,
+					$doms[$this->rbl_result[0][0]],
+					$this->rbl_result[0][1]);
+				self::errlog($fmt);
 			} else {
 				self::errlog("denied address " . $addr);
 			}

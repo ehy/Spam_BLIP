@@ -133,75 +133,11 @@ such as wp-content/uploads, or an unsuitable user or group ownership
 of (probably several) files and directories. This can be a frequent
 problem if the host has PHP configured in "safe mode".
 
-If the host is not a Unix system, I'm sorry to say I cannot help;
-maybe your hosting provider can.
-
-If the installation was successful, you should see a "Spam_BLIP Flash Video"
-widget under 'Appearance -> Widgets' and a form entitled
-"Spam_BLIP Flash Video Shortcode" on the posts and pages editing pages.
-
-For additional help, you will find README* files (differing in format,
-and excluding 'readme.txt', which is this file) that discuss the
-flash video player in more detail.
-
 == Frequently Asked Questions ==
 
 = Is this really a FAQ? =
 
-At the time of this writing, 0 (zero) questions have
-been asked, which implies that few have been asked
-frequently. Until this becomes a true FAQ, it will
-be used to answer questions that are merely anticipated,
-as is common practice.
-
-= Do I really need to understand "aspect ratio" and such-like? =
-
-Probably not. In most case the width and height of the
-video will match the intended display proportion.
-"Anamorphic" video is not rare, but probably not too common
-either. The author has seen videos on e.g., YouTube,
-that are distorted by wrong display aspect ratio
-(which is not YouTube's fault), but only a few.
-If you find that your video looks squeezed or stretched,
-you can always use a little trial & error with the display
-aspect setting until it looks good.
-
-What you *must* understand is that you *must* convert
-video to the format (the type) that the web-browser plugin
-can handle; namely, FLV or MP4. If you use a converter
-program designed for non-experts, you won't need to
-understand too many details. A web search should turn up
-some converter programs that might be worth a try.
-
-= Why doesn't Spam_BLIP support HTML5 video? =
-
-Because the author has decided that that would be
-done best in a separate (but similar) plugin. The
-author might write one, particularly if Spam_BLIP generates
-some interest.
-
-The problem with including HTML5 video in the same
-package is that HTML5 video in its current specification
-does not provide features that Spam_BLIP provides; for
-example, HTML5 video will not scale video disproportionate
-to the pixel width and height and will *only* scale video
-(proportionally) to the width or height of the html video
-element. (An insane JavaScript hack can create a not-displayed
-video object and use a timeout callback at at least the video
-frame rate to paint the current frame on a canvas with scaling
-suitably calculated for an anamorphic video, but using this
-method squanders the visitor's CPU, increases dropped frames,
-has no full-screen mode, and provides no built in controls,
-and is a bad idea that the author has looked into and
-rejected.) There are other reasons, such as different
-supported file formats.
-
-Update 1 August 2013: WordPress 3.6 is released, with HTML5
-video and audio support. That's another reason.
-
-= Are you going to anticipate more questions? =
-
-Maybe later.
+No.
 
 == Screenshots ==
 
@@ -215,42 +151,11 @@ Maybe later.
 
 == Changelog ==
 
-= 1.0.2 =
-* Corrections in (vaguely distinguished)
-	add_(action|filter) calls, according to tag used, checked against
-	WP source (whether do_action() or apply_filters() is invoked
-	for the tag in question).
-* Changed JS unescape() to decodeURIComponent().
-* Removed compiled README.{tty,tt8} from distribution.
-* Changed 'wptexturize' to 'htmlentities' for paths and things that
-	should not be pretty-pretty'd.
-* Changed 'Tags:' in readme.txt (and stable, etc.).
-
-= 1.0.1 =
-* Maintenance.
-* Editing and corrections in readme.txt.
-* Behavior change: without initial image ('poster'), medium is no
-	longer fetched automatically (without visitor play); was a
-	misfeature that would simulate an initial image by pausing
-	at a random point within first few seconds of the video, but
-	the unsolicited download is a bad idea. (Might be an option
-	in future.)
-
 = 1.0.0 =
 * Initial release.
 
 == Upgrade Notice ==
 
-= 1.0.2 =
-BUG FIX: URLs with non-8-bit characters would be corrupted in form
-	fields, causing not-found errors in the player: changed
-	JS unescape() to decodeURIComponent(). (Feedback on non-UTF-8
-	charsets would be welcome!)
-
-= 1.0.1 =
-This revision has one important change: a misfeature that would
-	simulate an initial image (if one was not set) by pausing
-	at a random point within first few seconds of the video, but
-	causing an unsolicited download of the medium in order to do so,
-	has been disabled.
+= 1.0.0 =
+* Initial release.
 	
