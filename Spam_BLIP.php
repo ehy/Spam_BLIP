@@ -161,8 +161,12 @@ class Spam_BLIP_class {
 	// delete options on uninstall
 	const optdelopts = 'delopts';
 	
-	// option group name for the plugin data store
+	// table name suffix for the plugin data store
 	const data_suffix  = 'Spam_BLIP_plugin1_datastore';
+	// version for store table layout: simple incrementing integer
+	const data_vs      = 1;
+	// option name for data store version
+	const data_vs_opt  = 'Spam_BLIP_plugin1_data_vers';
 
 	// verbose (helpful?) section descriptions?
 	const defverbose = 'true';
@@ -269,7 +273,7 @@ class Spam_BLIP_class {
 		// it's not enough to add this action in the activation hook;
 		// that alone does not work.  IAC administrative
 		// {de,}activate also controls the widget
-		//add_action('widgets_init', array($cl, 'regi_widget'));//, 1);
+		add_action('widgets_init', array($cl, 'regi_widget'));//, 1);
 	}
 
 	public function __destruct() {
@@ -333,152 +337,152 @@ class Spam_BLIP_class {
 	// initialize options/settings page, only if $this->full_init==true
 	// ($this->full_init set and checked in ctor)
 	protected function init_settings_page() {
-		if ( ! $this->opt ) {
-			$items = $this->init_opts();
-			
-			// use Opt* classes for page, sections, and fields
-			
-			// mk_aclv adds a suffix to class names
-			$Cf = self::mk_aclv('OptField');
-			$Cs = self::mk_aclv('OptSection');
-			// prepare fields to appear under various sections
-			// of admin page
-			$ns = 0;
-			$sections = array();
-
-			// General options section
-			$nf = 0;
-			$fields = array();
-			$fields[$nf++] = new $Cf(self::optverbose,
-					self::wt(__('Show verbose descriptions:', 'spambl_l10n')),
-					self::optverbose,
-					$items[self::optverbose],
-					array($this, 'put_verbose_opt'));
-			$fields[$nf++] = new $Cf(self::optcommflt,
-					self::wt(__('Blacklist check for comments:', 'spambl_l10n')),
-					self::optcommflt,
-					$items[self::optcommflt],
-					array($this, 'put_comments_opt'));
-			$fields[$nf++] = new $Cf(self::optpingflt,
-					self::wt(__('Blacklist check for pings:', 'spambl_l10n')),
-					self::optpingflt,
-					$items[self::optpingflt],
-					array($this, 'put_pings_opt'));
-
-			// section object includes description callback
-			$sections[$ns++] = new $Cs($fields,
-					'Spam_BLIP_plugin1_general_section',
-					'<a name="general">' .
-						self::wt(__('General Options', 'spambl_l10n'))
-						. '</a>',
-					array($this, 'put_general_desc'));
-
-			// data section:
-			$nf = 0;
-			$fields = array();
-			$fields[$nf++] = new $Cf(self::optrecdata,
-					self::wt(__('Keep Data:', 'spambl_l10n')),
-					self::optrecdata,
-					$items[self::optrecdata],
-					array($this, 'put_recdata_opt'));
-			$fields[$nf++] = new $Cf(self::optusedata,
-					self::wt(__('Use Data:', 'spambl_l10n')),
-					self::optusedata,
-					$items[self::optusedata],
-					array($this, 'put_usedata_opt'));
-
-			// misc
-			$sections[$ns++] = new $Cs($fields,
-					'Spam_BLIP_plugin1_datasto_section',
-					'<a name="data_store">' .
-						self::wt(__('Data Store Options', 'spambl_l10n'))
-						. '</a>',
-					array($this, 'put_datastore_desc'));
-			
-			// options for widget areas
-			$nf = 0;
-			$fields = array();
-			$fields[$nf++] = new $Cf(self::optplugwdg,
-					self::wt(__('Use the included widget:', 'spambl_l10n')),
-					self::optplugwdg,
-					$items[self::optplugwdg],
-					array($this, 'put_widget_opt'));
-			$fields[$nf++] = new $Cf(self::optipnglog,
-					self::wt(__('Log bad IP addresses:', 'spambl_l10n')),
-					self::optipnglog,
-					$items[self::optipnglog],
-					array($this, 'put_iplog_opt'));
-			$fields[$nf++] = new $Cf(self::optbliplog,
-					self::wt(__('Log blacklisted IP addresses:', 'spambl_l10n')),
-					self::optbliplog,
-					$items[self::optbliplog],
-					array($this, 'put_bliplog_opt'));
-			$fields[$nf++] = new $Cf(self::optbailout,
-					self::wt(__('Bail out on blacklisted IP:', 'spambl_l10n')),
-					self::optbailout,
-					$items[self::optbailout],
-					array($this, 'put_bailout_opt'));
-
-			// misc
-			$sections[$ns++] = new $Cs($fields,
-					'Spam_BLIP_plugin1_misc_section',
-					'<a name="misc_sect">' .
-						self::wt(__('Miscellaneous Options', 'spambl_l10n'))
-						. '</a>',
-					array($this, 'put_misc_desc'));
-			
-			// install opts section:
-			// field: delete opts on uninstall?
-			$nf = 0;
-			$fields = array();
-			$fields[$nf++] = new $Cf(self::optdelopts,
-					self::wt(__('When the plugin is uninstalled:', 'spambl_l10n')),
-					self::optdelopts,
-					$items[self::optdelopts],
-					array($this, 'put_del_opts'));
-
-			// prepare sections to appear under admin page
-			$sections[$ns++] = new $Cs($fields,
-					'Spam_BLIP_plugin1_inst_section',
-					'<a name="install">' .
-						self::wt(__('Plugin Install Settings', 'spambl_l10n'))
-						. '</a>',
-					array($this, 'put_inst_desc'));
-
-			// prepare admin page specific hooks per page. e.g.:
-			// (now set to false, but code remains for reference;
-			// see comment '// hook&filter to make shortcode form for editor'
-			// in __construct())
-			if ( false ) {
-				$suffix_hooks = array(
-					'admin_head' => array($this, 'admin_head'),
-					'admin_print_scripts' => array($this, 'admin_js'),
-					'load' => array($this, 'admin_load')
-					);
-			} else {
-				$suffix_hooks = '';
-			}
-			
-			// prepare admin page
-			// Note that validator applies to all options,
-			// necessitating a big switch on option keys
-			$Cp = self::mk_aclv('OptPage');
-			$page = new $Cp(self::opt_group, $sections,
-				self::settings_page_id,
-				self::wt(__('Spam_BLIP Plugin', 'spambl_l10n')),
-				self::wt(__('Spam_BLIP Configuration', 'spambl_l10n')),
-				array(__CLASS__, 'validate_opts'),
-				/* pagetype = 'options' */ '',
-				/* capability = 'manage_options' */ '',
-				array($this, 'setting_page_output_callback')/* callback '' */,
-				/* 'hook_suffix' callback array */ $suffix_hooks,
-				self::wt(__('Configuration of Spam_BLIP Plugin', 'spambl_l10n')),
-				self::wt(__('Display and Runtime Settings.', 'spambl_l10n')),
-				self::wt(__('Save Settings', 'spambl_l10n')));
-			
-			$Co = self::mk_aclv('Options');
-			$this->opt = new $Co($page);
+		if ( $this->opt ) {
+			return;
 		}
+
+		// use Opt* classes for page, sections, and fields
+		
+		// mk_aclv adds a suffix to class names
+		$Cf = self::mk_aclv('OptField');
+		$Cs = self::mk_aclv('OptSection');
+		// prepare fields to appear under various sections
+		// of admin page
+		$ns = 0;
+		$sections = array();
+
+		// General options section
+		$nf = 0;
+		$fields = array();
+		$fields[$nf++] = new $Cf(self::optverbose,
+				self::wt(__('Show verbose descriptions:', 'spambl_l10n')),
+				self::optverbose,
+				$items[self::optverbose],
+				array($this, 'put_verbose_opt'));
+		$fields[$nf++] = new $Cf(self::optcommflt,
+				self::wt(__('Blacklist check for comments:', 'spambl_l10n')),
+				self::optcommflt,
+				$items[self::optcommflt],
+				array($this, 'put_comments_opt'));
+		$fields[$nf++] = new $Cf(self::optpingflt,
+				self::wt(__('Blacklist check for pings:', 'spambl_l10n')),
+				self::optpingflt,
+				$items[self::optpingflt],
+				array($this, 'put_pings_opt'));
+
+		// section object includes description callback
+		$sections[$ns++] = new $Cs($fields,
+				'Spam_BLIP_plugin1_general_section',
+				'<a name="general">' .
+					self::wt(__('General Options', 'spambl_l10n'))
+					. '</a>',
+				array($this, 'put_general_desc'));
+
+		// data section:
+		$nf = 0;
+		$fields = array();
+		$fields[$nf++] = new $Cf(self::optrecdata,
+				self::wt(__('Keep Data:', 'spambl_l10n')),
+				self::optrecdata,
+				$items[self::optrecdata],
+				array($this, 'put_recdata_opt'));
+		$fields[$nf++] = new $Cf(self::optusedata,
+				self::wt(__('Use Data:', 'spambl_l10n')),
+				self::optusedata,
+				$items[self::optusedata],
+				array($this, 'put_usedata_opt'));
+
+		// misc
+		$sections[$ns++] = new $Cs($fields,
+				'Spam_BLIP_plugin1_datasto_section',
+				'<a name="data_store">' .
+					self::wt(__('Data Store Options', 'spambl_l10n'))
+					. '</a>',
+				array($this, 'put_datastore_desc'));
+		
+		// options for widget areas
+		$nf = 0;
+		$fields = array();
+		$fields[$nf++] = new $Cf(self::optplugwdg,
+				self::wt(__('Use the included widget:', 'spambl_l10n')),
+				self::optplugwdg,
+				$items[self::optplugwdg],
+				array($this, 'put_widget_opt'));
+		$fields[$nf++] = new $Cf(self::optipnglog,
+				self::wt(__('Log bad IP addresses:', 'spambl_l10n')),
+				self::optipnglog,
+				$items[self::optipnglog],
+				array($this, 'put_iplog_opt'));
+		$fields[$nf++] = new $Cf(self::optbliplog,
+				self::wt(__('Log blacklisted IP addresses:', 'spambl_l10n')),
+				self::optbliplog,
+				$items[self::optbliplog],
+				array($this, 'put_bliplog_opt'));
+		$fields[$nf++] = new $Cf(self::optbailout,
+				self::wt(__('Bail out on blacklisted IP:', 'spambl_l10n')),
+				self::optbailout,
+				$items[self::optbailout],
+				array($this, 'put_bailout_opt'));
+
+		// misc
+		$sections[$ns++] = new $Cs($fields,
+				'Spam_BLIP_plugin1_misc_section',
+				'<a name="misc_sect">' .
+					self::wt(__('Miscellaneous Options', 'spambl_l10n'))
+					. '</a>',
+				array($this, 'put_misc_desc'));
+		
+		// install opts section:
+		// field: delete opts on uninstall?
+		$nf = 0;
+		$fields = array();
+		$fields[$nf++] = new $Cf(self::optdelopts,
+				self::wt(__('When the plugin is uninstalled:', 'spambl_l10n')),
+				self::optdelopts,
+				$items[self::optdelopts],
+				array($this, 'put_del_opts'));
+
+		// prepare sections to appear under admin page
+		$sections[$ns++] = new $Cs($fields,
+				'Spam_BLIP_plugin1_inst_section',
+				'<a name="install">' .
+					self::wt(__('Plugin Install Settings', 'spambl_l10n'))
+					. '</a>',
+				array($this, 'put_inst_desc'));
+
+		// prepare admin page specific hooks per page. e.g.:
+		// (now set to false, but code remains for reference;
+		// see comment '// hook&filter to make shortcode form for editor'
+		// in __construct())
+		if ( false ) {
+			$suffix_hooks = array(
+				'admin_head' => array($this, 'admin_head'),
+				'admin_print_scripts' => array($this, 'admin_js'),
+				'load' => array($this, 'admin_load')
+				);
+		} else {
+			$suffix_hooks = '';
+		}
+		
+		// prepare admin page
+		// Note that validator applies to all options,
+		// necessitating a big switch on option keys
+		$Cp = self::mk_aclv('OptPage');
+		$page = new $Cp(self::opt_group, $sections,
+			self::settings_page_id,
+			self::wt(__('Spam_BLIP Plugin', 'spambl_l10n')),
+			self::wt(__('Spam_BLIP Configuration', 'spambl_l10n')),
+			array(__CLASS__, 'validate_opts'),
+			/* pagetype = 'options' */ '',
+			/* capability = 'manage_options' */ '',
+			array($this, 'setting_page_output_callback')/* callback '' */,
+			/* 'hook_suffix' callback array */ $suffix_hooks,
+			self::wt(__('Configuration of Spam_BLIP Plugin', 'spambl_l10n')),
+			self::wt(__('Display and Runtime Settings.', 'spambl_l10n')),
+			self::wt(__('Save Settings', 'spambl_l10n')));
+		
+		$Co = self::mk_aclv('Options');
+		$this->opt = new $Co($page);
 	}
 	
 	// This function is placed here below the function that sets-up
@@ -588,7 +592,10 @@ class Spam_BLIP_class {
 		self::load_translations();
 
 		// Settings/Options page setup
-		$this->init_settings_page();
+		$this->init_opts();
+		if ( current_user_can('manage_options') ) {
+			$this->init_settings_page();
+		}
 
 		$scf = array($this, 'action_pre_comment_on_post');
 		add_action('pre_comment_on_post', $scf, 1);
@@ -659,6 +666,46 @@ class Spam_BLIP_class {
 			return $addr;
 		}
 		return false;
+	}
+
+	// rx check for IP6 address; return boolean
+	public static function check_ip6_address($addr) {
+		$addr = trim($addr);
+
+		$pat = '[A-Fa-f0-9]{1,4}';
+		if ( preg_match(sprintf('/^(::%s|%s::)$/', $pat, $pat), $addr) ) {
+			return true;
+		}
+		if ( preg_match(sprintf('/^%s::%s$/', $pat, $pat), $addr) ) {
+			return true;
+		}
+
+		if ( ! preg_match(sprintf('/^%s:.*:%s$/', $pat, $pat), $addr) ) {
+			return false;
+		}
+
+		$a = explode(':', $addr);
+		$c = count($a);
+		if ( $c < 3 || $c > 8 ) {
+			return false;
+		}
+
+		$x = $c - 1;
+		$blank = false;
+		for ( $i = 1; $i < $x; $i++ ) {
+			if ( $a[$i] == '' ) {
+				if ( $blank ) { // allow one '::'
+					return false;
+				}
+				$blank = true;
+				continue;
+			}
+			if ( ! preg_match(sprintf('/^%s$/', $pat), $a[$i]) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	// append version suffix for Options classes names
@@ -1219,8 +1266,18 @@ class Spam_BLIP_class {
 
 	// add_action('pre_comment_on_post', $scf, 1);
 	public function action_pre_comment_on_post($comment_post_ID) {
-		// TODO: an action if aother tests passed
-		// (wp-comments-post.php, last in if-chain)
+		// in wp-comments-post.php this action 'pre_comment_on_post'
+		// is invoked from the last block in an if...else chain;
+		// we first handle filter 'comment_closed', but another
+		// plugin hooking that later can override our return,
+		// so use this filter as last chance to refuse listed addrs
+		// MAYBE this should be an option
+		$b = $this->filter_ip4_bl_internal(true, 'comments');
+		if ( $b === true ) {
+			// TRANSLATORS: polite rejection message
+			// in response to blacklisted IP address
+			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
+		}
 	}
 
 	// add_action('comment_closed', $scf, 1);
@@ -1228,7 +1285,7 @@ class Spam_BLIP_class {
 		// this gets called if WP core 'comments_open()' is false,
 		// but we only act here if our filter returned false
 		// and found an rbl hit.
-		if ( false ) { // not at all sure about code paths to this!
+		if ( true ) { // not at all sure about code paths to this!
 			if ( self::get_comments_open_option() != 'true' ) {
 				return;
 			}
@@ -1245,8 +1302,8 @@ class Spam_BLIP_class {
 			}		
 			
 			// TODO: make option
-			$txt = __('<h1>DENIED</h1><h3>IP address %s is associated with spam</h3>', 'spambl_l10n');
-			printf($txt, $_SERVER["REMOTE_ADDR"]);
+			$txt =__('Sorry, but no, thank you.', 'spambl_l10n');
+			printf('<h1>%s</h1>', $txt);
 		}
 	}
 
@@ -1318,11 +1375,12 @@ class Spam_BLIP_class {
 		$addr = self::get_conn_addr();
 
 		if ( $addr === false ) {
-			self::errlog(
-				sprintf(
-				__('cannot get remote address; $_SERVER["REMOTE_ADDR"] has "%s"', 'spambl_l10n'),
-					$_SERVER["REMOTE_ADDR"])
-			);
+			$addr = $_SERVER["REMOTE_ADDR"];
+			$fmt = self::check_ip6_address($addr) ?
+				__('Got IP version 6 address "%s"; sorry, only IP4 handled currently', 'spambl_l10n')
+				:
+				__('Invalid remote address; "REMOTE_ADDR" contains "%s"', 'spambl_l10n');
+			self::errlog(sprintf($fmt, $addr));
 			return $def;
 		}
 		
@@ -1333,18 +1391,17 @@ class Spam_BLIP_class {
 		$this->ipchk_done = true;
 		if ( $ret !== false ) {
 			if ( self::get_ip_log_option() != 'false' ) {
-				$ret = $ret ? 'RESERVED' : 'LOOPBACK';
-				$ret = sprintf('Got %s IPv4 address "%s" in '
-					. 'php $_SERVER["REMOTE_ADDR"].', $ret, $addr);
+				// TRANSLATORS: word for ietf/iana reserved network
+				$rsz = __('RESERVED', 'spambl_l10n');
+				// TRANSLATORS: word for ietf/iana loopback network
+				$lpb = __('LOOPBACK', 'spambl_l10n');
+				$ret = $ret ? $rsv : $lpb;
+				// TRANSLATORS: %1$s is either "RESERVED" or "LOOPBACK";
+				// see comments above.
+				// %2$s is an IPv4 dotted quad address
+				$fmt = __('Got %1$s IPv4 address "%2$s" in "REMOTE_ADDR".', 'spambl_l10n');
+				$ret = sprintf($fmt, $ret, $addr);
 				self::errlog($ret);
-				$ret .= "\nCGI/1.1 specifies that environment variable"
-					. "REMOTE_ADDR holds the\n"
-					. "IP address of the remote host making the request.\n"
-					. "\nThe environment variable REMOTE_ADDR is needed and"
-					. "widely used, and should hold a real address\n(not"
-					. "e.g., the address of a proxy used by a hosting "
-					. "provider network).\n\nThe site administrator "
-					. "should be contacted about this\n.";
 				// TODO: email admin
 				$this->handle_REMOTE_ADDR_error($ret);
 			}
@@ -1374,8 +1431,10 @@ class Spam_BLIP_class {
 			$ptxt = __('pings', 'spambl_l10n');
 			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
 			$ctxt = __('comments', 'spambl_l10n');
-			$dtxt = $statype == 'pings' ? $ptxt :
-				($statype == 'comments' ? $ctxt : $statype);
+
+			$dtxt = $statype === 'pings' ? $ptxt :
+				($statype === 'comments' ? $ctxt : $statype);
+
 			if ( is_array($this->rbl_result[0]) ) {
 				$doms = $this->chkbl->get_dom_array();
 				$fmt =
@@ -1434,8 +1493,30 @@ class Spam_BLIP_class {
 		return $wpdb->query("DROP TABLE IF EXISTS {$tbl}");
 	}
 	
-	// create the data store table
+	// create the data store table; use dbDelta, see:
+	// https://codex.wordpress.org/Creating_Tables_with_Plugins
 	protected function store_create_table() {
+		$o = get_option(self::data_vs_opt);
+		$v = 0;
+
+		// init version const is/was 1
+		if ( ! $o ) {
+			// opt did not exist, needs adding
+			add_option(self::data_vs_opt, ''.self::data_vs);
+		} else {
+			$v = 0 + $o;
+		}
+
+		// if existing version is not less, leave it be
+		if ( $v >= self::data_vs ) {
+			return true;
+		}
+
+		// opt already existed, needs update
+		if ( $o ) {
+			update_option(self::data_vs_opt, ''.self::data_vs);
+		}
+		
 		$tbl = $this->store_tablename();
 
 // Nice indenting must be suspended now
