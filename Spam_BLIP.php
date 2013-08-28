@@ -1437,7 +1437,7 @@ class Spam_BLIP_class {
 					// TRANSLATORS: %1$s is type "comments" or "pings"
 					// %2$s is IP4 address dotted quad
 					// %3$s is first seen date; in UTC, formatted
-					//      according to *host* machine's locale
+					//      in *site host* machine's locale
 					// %4$s is last seen date; as above
 					// %5$u is integer number of times seen (hitcount)
 					__('%1$s denied for address %2$s, first seen %3$s, last seen %4$s, seen %5$u times', 'spambl_l10n');
@@ -1510,8 +1510,8 @@ class Spam_BLIP_class {
 					// %2$s is IP4 address dotted quad
 					// %3$s is DNS blacklist lookup domain
 					// %4$s is IP4 blacklist lookup result
-					// %5$f is lookup time in microseconds (hence 'us')
-					__('%1$s denied for address %2$s, list at "%3$s", result %4$s in %5$fus', 'spambl_l10n');
+					// %5$f is lookup time in seconds (float)
+					__('%1$s denied for address %2$s, list at "%3$s", result %4$s in %5$f', 'spambl_l10n');
 				$fmt = sprintf($fmt, $dtxt, $addr,
 					$doms[ $this->rbl_result[0][0] ][0],
 					$this->rbl_result[0][1], $difftime);
@@ -1520,8 +1520,8 @@ class Spam_BLIP_class {
 				$fmt =
 					// TRANSLATORS: %1$s is type "comments" or "pings"
 					// %2$s is IP4 address dotted quad
-					// %3$f is lookup time in microseconds (hence 'us')
-					__('%1$s denied for address %2$s in %3$fus', 'spambl_l10n');
+					// %3$f is lookup time in seconds (float)
+					__('%1$s denied for address %2$s in %3$f', 'spambl_l10n');
 				$fmt = sprintf($fmt, $dtxt, $addr, $difftime);
 				self::errlog($fmt);
 			}
@@ -1681,7 +1681,7 @@ EOQ;
 		// update get values in $r with those passsed in $a
 		// leave address and seeninit alone
 		// compare lasttype, set varispam 1 if lasttype differs
-		if ( $r['lasttype'] !== $a['lasttype'] ) {
+		if ( (int)$r['lasttype'] !== (int)$a['lasttype'] ) {
 			$r['varispam'] = 1;
 		}
 		// set lasttype, seenlast
