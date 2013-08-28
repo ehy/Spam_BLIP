@@ -162,7 +162,7 @@ class Spam_BLIP_class {
 	const optdelopts = 'delopts';
 	
 	// option group name for the plugin data store
-	const data_group  = '_evh_Spam_BLIP_plugin1_data_grp';
+	const data_suffix  = 'Spam_BLIP_plugin1_datastore';
 
 	// verbose (helpful?) section descriptions?
 	const defverbose = 'true';
@@ -171,9 +171,9 @@ class Spam_BLIP_class {
 	// filter pingss_open?
 	const defpingflt = 'true';
 	// keep rbl hit data?
-	const defrecdata = 'true';
+	const defrecdata = 'false';
 	// use rbl hit data?
-	const defusedata = 'true';
+	const defusedata = 'false';
 	// optplugwdg -- use plugin's widget
 	const defplugwdg = 'false';  // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
@@ -217,8 +217,8 @@ class Spam_BLIP_class {
 	// hold an instance
 	private static $instance;
 
-	// int, incr while wrapping WP do_shortcode(), decr when done
-	private $in_wdg_do_shortcode;
+	// data store table name; built with $wpdb->prefix
+	private $data_table = null;
 
 	// this instance is fully initialized? (__construct($init == true))
 	private $full_init;
@@ -269,7 +269,7 @@ class Spam_BLIP_class {
 		// it's not enough to add this action in the activation hook;
 		// that alone does not work.  IAC administrative
 		// {de,}activate also controls the widget
-		add_action('widgets_init', array($cl, 'regi_widget'));//, 1);
+		//add_action('widgets_init', array($cl, 'regi_widget'));//, 1);
 	}
 
 	public function __destruct() {
@@ -560,6 +560,9 @@ class Spam_BLIP_class {
 	public static function regi_widget ($fargs = array()) {
 		global $wp_widget_factory;
 		if ( ! isset($wp_widget_factory) ) {
+			return;
+		}
+		if ( self::get_widget_option() == 'false' ) {
 			return;
 		}
 		if ( function_exists('register_widget') ) {
@@ -1364,18 +1367,36 @@ class Spam_BLIP_class {
 		if ( self::get_recdata_option() != 'false' ) {
 		}
 
+		$difftime = $posttime - $pretime;
 		// optional hit logging
 		if ( self::get_hitlog_option() != 'false' ) {
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ptxt = __('pings', 'spambl_l10n');
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ctxt = __('comments', 'spambl_l10n');
+			$dtxt = $statype == 'pings' ? $ptxt :
+				($statype == 'comments' ? $ctxt : $statype);
 			if ( is_array($this->rbl_result[0]) ) {
 				$doms = $this->chkbl->get_dom_array();
 				$fmt =
-					"%s denied for address %s, list at '%s', result %s";
-				$fmt = sprintf($fmt, $statype, $addr,
-					$doms[$this->rbl_result[0][0]][0],
-					$this->rbl_result[0][1]);
+					// TRANSLATORS: %1$s is type "comments" or "pings"
+					// %2$s is IP4 address dotted quad
+					// %3$s is DNS blacklist lookup domain
+					// %4$s is IP4 blacklist lookup result
+					// %5$f is lookup time in microseconds (hence 'us')
+					__('%1$s denied for address %2$s, list at "%3$s", result %4$s in %5$fus', 'spambl_l10n');
+				$fmt = sprintf($fmt, $dtxt, $addr,
+					$doms[ $this->rbl_result[0][0] ][0],
+					$this->rbl_result[0][1], $difftime);
 				self::errlog($fmt);
 			} else {
-				self::errlog($statype . " denied for address " . $addr);
+				$fmt =
+					// TRANSLATORS: %1$s is type "comments" or "pings"
+					// %2$s is IP4 address dotted quad
+					// %3$f is lookup time in microseconds (hence 'us')
+					__('%1$s denied for address %2$s in %3$fus', 'spambl_l10n');
+				$fmt = sprintf($fmt, $dtxt, $addr, $difftime);
+				self::errlog($fmt);
 			}
 		}		
 		
@@ -1388,6 +1409,62 @@ class Spam_BLIP_class {
 		}
 
 		return $ret;
+	}
+
+	/**
+	 * methods for optional data store
+	 */
+	 
+	// get db table name
+	protected function store_tablename() {
+		global $wpdb;
+		
+		// const data_suffix
+		if ( $this->data_table === null ) {
+			$this->data_table = $wpdb->prefix . self::data_suffix;
+		}
+		
+		return $this->data_table;
+	}
+	
+	// create the data store table
+	protected function store_delete_table() {
+		global $wpdb;
+		$tbl = $this->store_tablename();
+		return $wpdb->query("DROP TABLE IF EXISTS {$tbl}");
+	}
+	
+	// create the data store table
+	protected function store_create_table() {
+		$tbl = $this->store_tablename();
+
+// Nice indenting must be suspended now
+// want a table like so:
+// address  == dotted IP4 address ; primary key
+// hitcount == count of hits
+// seeninit == *epoch* time of 1st recorded hit
+// seenlast == *epoch* time of last recorded hit
+// lasttype == enum(0==comment, 1==ping, 2==other)
+// varispam == bool set true if lasttype != current type
+// 
+$qs = <<<EOQ
+CREATE TABLE $tbl (
+  address char(15) NOT NULL default '0.0.0.0',
+  hitcount int(11) UNSIGNED NOT NULL default '0',
+  seeninit int(11) UNSIGNED NOT NULL default '0',
+  seenlast int(11) UNSIGNED NOT NULL,
+  lasttype enum('0','1','2') NOT NULL default '2',
+  varispam tinyint(1) NOT NULL default '0',
+  PRIMARY KEY  (address)
+);
+
+EOQ;
+
+		// back to pretty-pretty indents!
+		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		dbDelta($qs);
+
+		return true;
 	}
 } // End class Spam_BLIP_class
 
