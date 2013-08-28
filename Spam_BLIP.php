@@ -340,6 +340,7 @@ class Spam_BLIP_class {
 		if ( $this->opt ) {
 			return;
 		}
+		$items = self::get_opt_group();
 
 		// use Opt* classes for page, sections, and fields
 		
@@ -595,6 +596,12 @@ class Spam_BLIP_class {
 		$this->init_opts();
 		if ( current_user_can('manage_options') ) {
 			$this->init_settings_page();
+		}
+
+		// this will create/update table as nec. if user set
+		// the option (which defaults to false)
+		if ( self::get_recdata_option() != 'false' ) {
+			$this->store_create_table();
 		}
 
 		$scf = array($this, 'action_pre_comment_on_post');
@@ -1411,6 +1418,62 @@ class Spam_BLIP_class {
 		}
 
 		$pretime = self::best_time();
+
+		// TODO: record stats
+		if ( self::get_usedata_option() != 'false' ) {
+			$d = $this->store_get_address($addr);
+			if ( is_array($d) ) {
+				// optional hit logging
+				if ( self::get_hitlog_option() != 'false' ) {
+					// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+					$ptxt = __('pings', 'spambl_l10n');
+					// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+					$ctxt = __('comments', 'spambl_l10n');
+		
+					$dtxt = $statype === 'pings' ? $ptxt :
+						($statype === 'comments' ? $ctxt : $statype);
+		
+					$fmt =
+					// TRANSLATORS: %1$s is type "comments" or "pings"
+					// %2$s is IP4 address dotted quad
+					// %3$s is first seen date; in UTC, formatted
+					//      according to *host* machine's locale
+					// %4$s is last seen date; as above
+					// %5$u is integer number of times seen (hitcount)
+					__('%1$s denied for address %2$s, first seen %3$s, last seen %4$s, seen %5$u times', 'spambl_l10n');
+					$fmt = sprintf($fmt, $dtxt, $addr,
+						gmdate(DATE_RFC2822, (int)$d['seeninit']),
+						gmdate(DATE_RFC2822, (int)$d['seenlast']),
+						(int)$d['hitcount']);
+					self::errlog($fmt);
+				}		
+
+				// optionally record stats
+				if ( self::get_recdata_option() != 'false' ) {
+					$this->store_update_array(
+						$this->store_make_array(
+							$addr, 1, (int)$pretime, $statype
+						)
+					);
+				}
+				
+				// optionally die
+				if ( self::get_bailout_option() != 'false' ) {
+					// Allow additional action from elsewhere, however unlikely.
+					do_action('spamblip_hit_bailout', $addr, $statype);
+					// TODO: make message text an option
+					wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
+				}
+
+				// set the result; checked in various places
+				$this->rbl_result = array(true);
+				return false;
+			}
+		}
+
+		// again, in case last block was slow
+		$pretime = self::best_time();
+
 		$ret = $this->bl_check_addr($addr);
 		if ( $ret === false ) {
 			return $def;
@@ -1420,13 +1483,18 @@ class Spam_BLIP_class {
 		// We have a hit!
 		$ret = false;
 		
-		// TODO: record stats
+		// optionally record stats
 		if ( self::get_recdata_option() != 'false' ) {
+			$this->store_update_array(
+				$this->store_make_array(
+					$addr, 1, (int)$pretime, $statype
+				)
+			);
 		}
 
-		$difftime = $posttime - $pretime;
 		// optional hit logging
 		if ( self::get_hitlog_option() != 'false' ) {
+			$difftime = $posttime - $pretime;
 			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
 			$ptxt = __('pings', 'spambl_l10n');
 			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
@@ -1546,6 +1614,106 @@ EOQ;
 		dbDelta($qs);
 
 		return true;
+	}
+	
+	// get record for an IP address; returns null
+	// (as $wpdb->get_row() is documented to do),
+	// or associative array
+	protected function store_get_address($addr) {
+		global $wpdb;
+		$tbl = $this->store_tablename();
+		
+		$q = sprintf("SELECT * FROM %s WHERE address = '%s'",
+			$tbl, $addr);
+		$r = $wpdb->get_row($q, ARRAY_A);
+
+		return $r;
+	}
+	
+	// delete record from address -- uses method
+	// added in WP 3.4.0
+	protected function store_remove_address($addr) {
+		global $wpdb;
+		$tbl = $this->store_tablename();
+
+		if ( ! method_exists($wpdb, 'delete') ) {
+			return false;
+		}
+
+		$wh = array('address' => $addr);
+		$r = $wpdb->delete($tbl, $wh, array('%s'));
+		return $r;
+	}
+
+	// insert record from an associative array
+	protected function store_insert_array($a) {
+		// possibly redundant, but check for record first
+		$r = $this->store_get_address($a['address']);
+		if ( is_array($r) ) {
+			return false;
+		}
+
+		global $wpdb;
+		$tbl = $this->store_tablename();
+
+		$r = $wpdb->insert($tbl, $a,
+			array('%s','%d','%d','%d','%d','%d')
+		);
+
+		return $r;
+	}
+	
+	// update record from an associative array
+	// will insert record that doesn't exist if $insert is true
+	protected function store_update_array($a, $insert = true) {
+		// possibly redundant, but check for record first
+		$r = $this->store_get_address($a['address']);
+		if ( ! is_array($r) ) {
+			if ( $insert === true ) {
+				return $this->store_insert_array($a);
+			}
+			return false;
+		}
+
+		global $wpdb;
+		$tbl = $this->store_tablename();
+		
+		// update get values in $r with those passsed in $a
+		// leave address and seeninit alone
+		// compare lasttype, set varispam 1 if lasttype differs
+		if ( $r['lasttype'] !== $a['lasttype'] ) {
+			$r['varispam'] = 1;
+		}
+		// set lasttype, seenlast
+		$r['lasttype'] = $a['lasttype'];
+		$r['seenlast'] = $a['seenlast'];
+		// add hitcount
+		$r['hitcount'] = (int)$r['hitcount'] + (int)$a['hitcount'];
+		
+		$wh = array('address' => $a['address']);
+		$r = $wpdb->update($tbl, $r, $wh,
+			array('%s','%d','%d','%d','%d','%d'),
+			array('%s')
+		);
+
+		return $r;
+	}
+	
+	// make insert/update array from separate args
+	protected function store_make_array(
+		$addr, $hitincr, $time, $type = 'comments')
+	{
+		$t = 2;
+		if ( $type === 'comments' ) { $t = 0; }
+		if ( $type === 'pings' )    { $t = 1; }
+		return array(
+			'address'  => $addr,
+			'hitcount' => $hitincr,
+			'seeninit' => $time,
+			'seenlast' => $time,
+			'lasttype' => $t,
+			'varispam' => 0
+		);
 	}
 } // End class Spam_BLIP_class
 

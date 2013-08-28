@@ -41,9 +41,9 @@ XGETTEXT = xgettext
 ZIP = zip -r -9 -v -T -X
 PHPCLI = php -f
 
-all: mk_archive
+all: ${PRJZIP}
 
-mk_archive ${PRJZIP}: ${JSBIN} ${ZALL} ${LCFPO}
+${PRJZIP}: ${JSBIN} ${ZALL} ${LCFPO}
 	test -e ttd && rm -rf ttd; test -e ${PRJDIR} && mv ${PRJDIR} ttd; \
 	mkdir ${PRJDIR}; \
 	cp -r -p ${ZALL} ${ZDIR} ${PRJDIR}; \
