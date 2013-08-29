@@ -160,6 +160,8 @@ class Spam_BLIP_class {
 	const optbailout = 'bailout';
 	// delete options on uninstall
 	const optdelopts = 'delopts';
+	// delete data store on uninstall
+	const optdelstor = 'delstor';
 	
 	// table name suffix for the plugin data store
 	const data_suffix  = 'Spam_BLIP_plugin1_datastore';
@@ -188,6 +190,8 @@ class Spam_BLIP_class {
 	const defbailout = 'false';
 	// delete options on uninstall
 	const defdelopts = 'true';
+	// delete data store on uninstall
+	const defdelstor = 'true';
 	
 	// autoload class version suffix
 	const aclv = '0_0_2a';
@@ -295,6 +299,7 @@ class Spam_BLIP_class {
 			self::optbliplog => self::defbliplog,
 			self::optbailout => self::defbailout,
 			self::optdelopts => self::defdelopts,
+			self::optdelstor => self::defdelstor,
 		);
 		
 		if ( $chkonly !== true ) {
@@ -438,10 +443,15 @@ class Spam_BLIP_class {
 		$nf = 0;
 		$fields = array();
 		$fields[$nf++] = new $Cf(self::optdelopts,
-				self::wt(__('When the plugin is uninstalled:', 'spambl_l10n')),
+				self::wt(__('Delete setup options on uninstall:', 'spambl_l10n')),
 				self::optdelopts,
 				$items[self::optdelopts],
 				array($this, 'put_del_opts'));
+		$fields[$nf++] = new $Cf(self::optdelstor,
+				self::wt(__('Delete database table on uninstall:', 'spambl_l10n')),
+				self::optdelstor,
+				$items[self::optdelstor],
+				array($this, 'put_del_stor'));
 
 		// prepare sections to appear under admin page
 		$sections[$ns++] = new $Cs($fields,
@@ -545,6 +555,23 @@ class Spam_BLIP_class {
 		self::unregi_widget();
 		
 		$opts = self::get_opt_group();
+
+		if ( $opts && $opts[self::optdelstor] != 'false' ) {
+			global $Spam_BLIP_plugin1_evh_instance_1;
+			$pg = null;
+
+			if ( ! isset($Spam_BLIP_plugin1_evh_instance_1)
+				|| $Spam_BLIP_plugin1_evh_instance_1 == null ) {
+				$pg = self::instantiate(false);
+			} else {
+				$pg = $Spam_BLIP_plugin1_evh_instance_1;
+			}
+
+			// bye data
+			$pg->store_delete_table();
+			delete_option(self::data_vs_opt);
+		}
+
 		if ( $opts && $opts[self::optdelopts] != 'false' ) {
 			delete_option(self::opt_group);
 		}
@@ -883,6 +910,7 @@ class Spam_BLIP_class {
 				case self::optbliplog:
 				case self::optbailout:
 				case self::optdelopts:
+				case self::optdelstor:
 					if ( $ot != 'true' && $ot != 'false' ) {
 						$e = sprintf('bad option: %s[%s]', $k, $v);
 						self::errlog($e);
@@ -1057,17 +1085,20 @@ class Spam_BLIP_class {
 		}
 
 		$t = self::wt(__('This section includes optional
-			features for plugin install or uninstall. Presently
-			the only option is whether to remove the plugin\'s
-			set of options from the database when
-			the plugin is deleted.
-			There is probably no reason to leave the options in
-			place if you intend to delete the plugin permanently;
-			you may simply deactivate the plugin if
-			you want it off temporarily.
+			features for plugin install or uninstall. Currently,
+			the only options are whether to remove the plugin\'s
+			setup options and data storage from the 
+			<em>WordPress</em> database when the plugin is deleted.
+			There is probably no reason to leave the these data in
+			place if you intend to delete the plugin permanently.
 			If you intend to delete and then reinstall the plugin,
 			possibly for a new version or update, then keeping the
-			options might be helpful.', 'spambl_l10n'));
+			these data might be a good idea.
+			</p><p>
+			The "Delete setup options" option and the
+			"Delete database table" option are independent;
+			one may be deleted while the other is saved.
+			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
@@ -1158,6 +1189,13 @@ class Spam_BLIP_class {
 	public function put_del_opts($a) {
 		$tt = self::wt(__('Permanently delete settings (clean db)', 'spambl_l10n'));
 		$k = self::optdelopts;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
+	// callback, install section field: data delete
+	public function put_del_stor($a) {
+		$tt = self::wt(__('Permanently delete stored data (drop table)', 'spambl_l10n'));
+		$k = self::optdelstor;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
@@ -1422,6 +1460,8 @@ class Spam_BLIP_class {
 		// TODO: record stats
 		if ( self::get_usedata_option() != 'false' ) {
 			$d = $this->store_get_address($addr);
+			$posttime = self::best_time();
+
 			if ( is_array($d) ) {
 				// optional hit logging
 				if ( self::get_hitlog_option() != 'false' ) {
@@ -1440,11 +1480,14 @@ class Spam_BLIP_class {
 					//      in *site host* machine's locale
 					// %4$s is last seen date; as above
 					// %5$u is integer number of times seen (hitcount)
-					__('%1$s denied for address %2$s, first seen %3$s, last seen %4$s, seen %5$u times', 'spambl_l10n');
+					// %6$f is is time (float) used in database check
+					_n('%1$s denied for address %2$s, first seen %3$s, last seen %4$s, previously seen %5$u time; (db time %6$f)',
+					   '%1$s denied for address %2$s, first seen %3$s, last seen %4$s, previously seen %5$u times; (db time %6$f)',
+					   (int)$d['hitcount'], 'spambl_l10n');
 					$fmt = sprintf($fmt, $dtxt, $addr,
 						gmdate(DATE_RFC2822, (int)$d['seeninit']),
 						gmdate(DATE_RFC2822, (int)$d['seenlast']),
-						(int)$d['hitcount']);
+						(int)$d['hitcount'], $posttime - $pretime);
 					self::errlog($fmt);
 				}		
 
@@ -1458,12 +1501,7 @@ class Spam_BLIP_class {
 				}
 				
 				// optionally die
-				if ( self::get_bailout_option() != 'false' ) {
-					// Allow additional action from elsewhere, however unlikely.
-					do_action('spamblip_hit_bailout', $addr, $statype);
-					// TODO: make message text an option
-					wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
-				}
+				self::hit_optional_bailout($addr, $statype);
 
 				// set the result; checked in various places
 				$this->rbl_result = array(true);
@@ -1528,14 +1566,18 @@ class Spam_BLIP_class {
 		}		
 		
 		// optionally die
+		self::hit_optional_bailout($addr, $statype);
+
+		return $ret;
+	}
+
+	protected static function hit_optional_bailout($addr, $statype) {
 		if ( self::get_bailout_option() != 'false' ) {
 			// Allow additional action from elsewhere, however unlikely.
 			do_action('spamblip_hit_bailout', $addr, $statype);
 			// TODO: make message text an option
 			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
 		}
-
-		return $ret;
 	}
 
 	/**
@@ -1558,6 +1600,7 @@ class Spam_BLIP_class {
 	protected function store_delete_table() {
 		global $wpdb;
 		$tbl = $this->store_tablename();
+		// 'IF EXISTS' should suppress error if never created
 		return $wpdb->query("DROP TABLE IF EXISTS {$tbl}");
 	}
 	
@@ -1616,16 +1659,29 @@ EOQ;
 		return true;
 	}
 	
+	// cache var for the following store_get_address method
+	private $store_get_addr_cache = null;
+
 	// get record for an IP address; returns null
 	// (as $wpdb->get_row() is documented to do),
 	// or associative array
 	protected function store_get_address($addr) {
+		if ( $this->store_get_addr_cache !== null
+			&& $this->store_get_addr_cache[0] === $addr ) {
+			return $this->store_get_addr_cache[1];
+		}
+
 		global $wpdb;
 		$tbl = $this->store_tablename();
 		
-		$q = sprintf("SELECT * FROM %s WHERE address = '%s'",
-			$tbl, $addr);
+		$q = "SELECT * FROM {$tbl} WHERE address = '{$addr}'";
 		$r = $wpdb->get_row($q, ARRAY_A);
+
+		if ( is_array($r) ) {
+			$this->store_get_addr_cache = array($addr, $r);
+		} else {
+			$this->store_get_addr_cache = null;
+		}
 
 		return $r;
 	}
@@ -1633,11 +1689,25 @@ EOQ;
 	// delete record from address -- uses method
 	// added in WP 3.4.0
 	protected function store_remove_address($addr) {
+		if ( $this->store_get_addr_cache !== null
+			&& $this->store_get_addr_cache[0] === $addr ) {
+			$this->store_get_addr_cache = null;
+		}
+
 		global $wpdb;
 		$tbl = $this->store_tablename();
 
 		if ( ! method_exists($wpdb, 'delete') ) {
-			return false;
+			// w/o delete method use query
+			return $wpdb->query(
+				$wpdb->prepare(
+					"
+					DELETE * FROM {$tbl}
+					WHERE address = %s
+					",
+					$addr
+				)
+			);
 		}
 
 		$wh = array('address' => $addr);
@@ -1646,11 +1716,15 @@ EOQ;
 	}
 
 	// insert record from an associative array
-	protected function store_insert_array($a) {
+	// $check1st may be false if caller is certain
+	// the existence of the record need not be checked
+	protected function store_insert_array($a, $check1st = true) {
 		// possibly redundant, but check for record first
-		$r = $this->store_get_address($a['address']);
-		if ( is_array($r) ) {
-			return false;
+		if ( $check1st !== false ) {
+			$r = $this->store_get_address($a['address']);
+			if ( is_array($r) ) {
+				return false;
+			}
 		}
 
 		global $wpdb;
@@ -1670,14 +1744,17 @@ EOQ;
 		$r = $this->store_get_address($a['address']);
 		if ( ! is_array($r) ) {
 			if ( $insert === true ) {
-				return $this->store_insert_array($a);
+				return $this->store_insert_array($a, false);
 			}
 			return false;
 		}
 
 		global $wpdb;
 		$tbl = $this->store_tablename();
-		
+
+		// cache holds record that is changed, so clear it
+		$this->store_get_addr_cache = null;
+
 		// update get values in $r with those passsed in $a
 		// leave address and seeninit alone
 		// compare lasttype, set varispam 1 if lasttype differs

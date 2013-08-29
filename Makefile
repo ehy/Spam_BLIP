@@ -67,13 +67,23 @@ en_US-mo $(LCFPO): $(LCPOT)
 	echo If you care about translations then check that \
 	GNU gettext package is installed; exit 0; }
 
+COPYRIGHT_HOLDER = Ed Hynan
+COPYRIGHT_YEAR   = 2013
+TRANS_BUGS_EMAIL = edhynan@gmail.com
+TOOLONGSTR = This file is distributed under the same license as the PACKAGE package.
+TOOLONGREP = This file is distributed under the same license as the $(PRJSTEM) package.
+
 pot $(LCPOT): $(POTSRCS)
 	@echo Invoking $(XGETTEXT) to make $(LCPOT).
-	@$(XGETTEXT) --output=$(LCPOT) --debug --add-comments \
-	--keyword=__ --keyword=_e \
+	@$(XGETTEXT) --output=- --debug --add-comments \
+	--keyword=__ --keyword=_e --keyword=_n:1,2 \
 	--package-name=$(PRJSTEM) --package-version=$(PRJVERS) \
-	--copyright-holder='Ed Hynan' \
-	--language=PHP $(POTSRCS) && \
+	--copyright-holder='$(COPYRIGHT_HOLDER)' \
+	--msgid-bugs-address='$(TRANS_BUGS_EMAIL)' \
+	--language=PHP --width=72 $(POTSRCS) | \
+	sed -e 's/^# SOME DESCRIPTIVE TITLE./# $(PRJSTEM) $(PRJVERS) Pot Source/' \
+		-e 's/^\(# Copyright (C) \)YEAR/\1$(COPYRIGHT_YEAR)/' \
+		-e 's/# $(TOOLONGSTR)/# $(TOOLONGREP)/' > $(LCPOT) && \
 	echo Succeeded with $@ || \
 	{ echo FAILED to make the i18n template $(LCPOT); \
 	echo If you care about translations then check that \
