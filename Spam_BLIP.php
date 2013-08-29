@@ -166,7 +166,7 @@ class Spam_BLIP_class {
 	// table name suffix for the plugin data store
 	const data_suffix  = 'Spam_BLIP_plugin1_datastore';
 	// version for store table layout: simple incrementing integer
-	const data_vs      = 1;
+	const data_vs      = 2;
 	// option name for data store version
 	const data_vs_opt  = 'Spam_BLIP_plugin1_data_vers';
 
@@ -1636,7 +1636,7 @@ class Spam_BLIP_class {
 // hitcount == count of hits
 // seeninit == *epoch* time of 1st recorded hit
 // seenlast == *epoch* time of last recorded hit
-// lasttype == enum(0==comment, 1==ping, 2==other)
+// lasttype == enum('comments', 'pings', 'other1', 'other2', 'other3')
 // varispam == bool set true if lasttype != current type
 // 
 $qs = <<<EOQ
@@ -1645,7 +1645,7 @@ CREATE TABLE $tbl (
   hitcount int(11) UNSIGNED NOT NULL default '0',
   seeninit int(11) UNSIGNED NOT NULL default '0',
   seenlast int(11) UNSIGNED NOT NULL,
-  lasttype enum('0','1','2') NOT NULL default '2',
+  lasttype enum('comments', 'pings', 'other1', 'other2', 'other3') NOT NULL default 'comments',
   varispam tinyint(1) NOT NULL default '0',
   PRIMARY KEY  (address)
 );
@@ -1731,7 +1731,7 @@ EOQ;
 		$tbl = $this->store_tablename();
 
 		$r = $wpdb->insert($tbl, $a,
-			array('%s','%d','%d','%d','%d','%d')
+			array('%s','%d','%d','%d','%s','%d')
 		);
 
 		return $r;
@@ -1758,7 +1758,7 @@ EOQ;
 		// update get values in $r with those passsed in $a
 		// leave address and seeninit alone
 		// compare lasttype, set varispam 1 if lasttype differs
-		if ( (int)$r['lasttype'] !== (int)$a['lasttype'] ) {
+		if ( $r['lasttype'] !== $a['lasttype'] ) {
 			$r['varispam'] = 1;
 		}
 		// set lasttype, seenlast
@@ -1769,7 +1769,7 @@ EOQ;
 		
 		$wh = array('address' => $a['address']);
 		$r = $wpdb->update($tbl, $r, $wh,
-			array('%s','%d','%d','%d','%d','%d'),
+			array('%s','%d','%d','%d','%s','%d'),
 			array('%s')
 		);
 
@@ -1780,9 +1780,12 @@ EOQ;
 	protected function store_make_array(
 		$addr, $hitincr, $time, $type = 'comments')
 	{
-		$t = 2;
-		if ( $type === 'comments' ) { $t = 0; }
-		if ( $type === 'pings' )    { $t = 1; }
+		// setup the enum field "lasttype"; avoid assumption
+		// that arg and enum keys will match
+		$t = 'other1';
+		if ( $type === 'comments' ) { $t = 'comments'; }
+		if ( $type === 'pings' )    { $t = 'pings'; }
+
 		return array(
 			'address'  => $addr,
 			'hitcount' => $hitincr,
