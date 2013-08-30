@@ -334,10 +334,16 @@ endif; // if ( ! class_exists() ) :
 
 /**
  * A class to check whether an IPv4 address is
- * routable, interna;||private, or loopback
+ * routable, internal||private, or loopback
  */
 if ( ! class_exists('IPReservedCheck_0_0_1') ) :
 class IPReservedCheck_0_0_1 {
+	// help detect class name conflicts; called by using code
+	private static $evh_opt_id = 0xED00AA33;
+	public static function id_token () {
+		return self::$evh_opt_id;
+	}
+
 	// Internal, private, with loopback at [0]
 	protected $masks_dots = array(
 		// loopback RFC 5735

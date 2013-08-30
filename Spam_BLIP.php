@@ -223,7 +223,7 @@ class Spam_BLIP_class {
 	protected $Spam_BLIP_js;
 	
 	// hold an instance
-	private static $instance;
+	private static $instance = null;
 
 	// data store table name; built with $wpdb->prefix
 	private $data_table = null;
@@ -339,8 +339,7 @@ class Spam_BLIP_class {
 		return $opts;
 	}
 
-	// initialize options/settings page, only if $this->full_init==true
-	// ($this->full_init set and checked in ctor)
+	// initialize options/settings page
 	protected function init_settings_page() {
 		if ( $this->opt ) {
 			return;
@@ -557,16 +556,7 @@ class Spam_BLIP_class {
 		$opts = self::get_opt_group();
 
 		if ( $opts && $opts[self::optdelstor] != 'false' ) {
-			global $Spam_BLIP_plugin1_evh_instance_1;
-			$pg = null;
-
-			if ( ! isset($Spam_BLIP_plugin1_evh_instance_1)
-				|| $Spam_BLIP_plugin1_evh_instance_1 == null ) {
-				$pg = self::instantiate(false);
-			} else {
-				$pg = $Spam_BLIP_plugin1_evh_instance_1;
-			}
-
+			$pg = self::get_instance();
 			// bye data
 			$pg->store_delete_table();
 			delete_option(self::data_vs_opt);
@@ -840,9 +830,26 @@ class Spam_BLIP_class {
 	
 	// helper to make self
 	public static function instantiate($init = true) {
-		$cl = __CLASS__;
-		self::$instance = new $cl($init);
+		if ( ! self::$instance ) {
+			$cl = __CLASS__;
+			self::$instance = new $cl($init);
+		}
 		return self::$instance;
+	}
+
+	// helper get instance of this class
+	public static function get_instance($init = false) {
+		global $Spam_BLIP_plugin1_evh_instance_1;
+		$pg = null;
+
+		if ( ! isset($Spam_BLIP_plugin1_evh_instance_1)
+			|| $Spam_BLIP_plugin1_evh_instance_1 == null ) {
+			$pg = self::instantiate($init);
+		} else {
+			$pg = $Spam_BLIP_plugin1_evh_instance_1;
+		}
+
+		return $pg;
 	}
 
 	// get microtime() if possible, else just time()
@@ -991,6 +998,17 @@ class Spam_BLIP_class {
 	public function put_datastore_desc() {
 		$t = self::wt(__('Enable/disable data store:', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
+
+		$cnt = $this->store_get_rowcount();
+		if ( $cnt ) {
+			$t = self::wt(
+				_n('(There is %d record in the data store)',
+				   '(There are %d records in the data store)',
+				   $cnt, 'spambl_l10n')
+			);
+			printf('<p>%s</p>%s', sprintf($t, $cnt), "\n");
+		}
+
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
 		}
@@ -1686,6 +1704,28 @@ EOQ;
 		return $r;
 	}
 	
+	// get number of records -- checks the store version options
+	// first for whether the table should exist -- returns
+	// false if the option does not exist
+	protected function store_get_rowcount() {
+		if ( ! get_option(self::data_vs_opt) ) {
+			return false;
+		}
+
+		global $wpdb;
+		$tbl = $this->store_tablename();
+
+		$r = $wpdb->get_results(
+			"SELECT COUNT(*) FROM {$tbl}", ARRAY_N
+		);
+
+		if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
+			return $r[0][0];
+		}
+		
+		return false;
+	}
+
 	// delete record from address -- uses method
 	// added in WP 3.4.0
 	protected function store_remove_address($addr) {
@@ -1781,10 +1821,13 @@ EOQ;
 		$addr, $hitincr, $time, $type = 'comments')
 	{
 		// setup the enum field "lasttype"; avoid assumption
-		// that arg and enum keys will match
+		// that arg and enum keys will match, although
+		// they should -- this can be made helpful or fuzzy, later
 		$t = 'other1';
 		if ( $type === 'comments' ) { $t = 'comments'; }
 		if ( $type === 'pings' )    { $t = 'pings'; }
+		if ( $type === 'other2' )   { $t = 'other2'; }
+		if ( $type === 'other3' )   { $t = 'other3'; }
 
 		return array(
 			'address'  => $addr,
@@ -1794,6 +1837,28 @@ EOQ;
 			'lasttype' => $t,
 			'varispam' => 0
 		);
+	}
+
+	// public: get some info on the data store; e.g., for
+	// the widget -- return map where ['k'] is an array
+	// of avalable keys, not including 'k'
+	public function get_store_info() {
+		$r = array(
+			'k' => array()
+		);
+		
+		// 'row_count'
+		$c = $this->store_get_rowcount();
+		if ( $c === false ) {
+			return false;
+		}
+		
+		$r['k'][] = 'row_count';
+		$r['row_count'] = $c;
+		
+		// TODO: more
+		
+		return $r;
 	}
 } // End class Spam_BLIP_class
 
@@ -1819,19 +1884,13 @@ class Spam_BLIP_widget_class extends WP_Widget {
 	protected $plinst;
 	
 	public function __construct() {
-		global $Spam_BLIP_plugin1_evh_instance_1;
-		if ( ! isset($Spam_BLIP_plugin1_evh_instance_1) ) {
-			$cl = self::Spam_BLIP_plugin_plugin;
-			$this->plinst = new $cl(false);
-		} else {
-			$this->plinst = &$Spam_BLIP_plugin1_evh_instance_1;
-		}
+		$this->plinst = Spam_BLIP_class::get_instance(false);
 	
 		$cl = __CLASS__;
 		// Label shown on widgets page
-		$lb =  __('Spam_BLIP Plugin Stats', 'spambl_l10n');
+		$lb =  __('Spam_BLIP Plugin Data', 'spambl_l10n');
 		// Description shown under label shown on widgets page
-		$desc = __('Display comment spam blacklist hit counts', 'spambl_l10n');
+		$desc = __('Display comment spam blacklist stored data information', 'spambl_l10n');
 		$opts = array('classname' => $cl, 'description' => $desc);
 
 		// control opts width affects the parameters form,
@@ -1849,42 +1908,27 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			return;
 		}
 		
-		$pr = self::Spam_BLIP_plugin_params;
-		$pr = new $pr();
-		$pr->setnewarray($instance);
-
-		if ( ! $pr->getvalue('width') ) {
-			$pr->setvalue('width', self::defwidth);
-		}
-		if ( ! $pr->getvalue('height') ) {
-			$pr->setvalue('height', self::defheight);
-		}
-		$pr->sanitize();
-		$w = $pr->getvalue('width');
-		$h = $pr->getvalue('height');
-		$bh = $pr->getvalue('barheight');
-
-		$cap = $this->plinst->wt($pr->getvalue('caption'));
-		if ( $this->plinst->should_use_ming() ) {
-			$uswf = $this->plinst->get_swf_url('widget', $w, $h);
-		} else {
-			$uswf = $this->plinst->get_swf_binurl($bh);
-		}
-
 		$code = 'widget-div';
-		$dw = $w + 3;
+		$dw = 200;
 		// use no class, but do use deprecated align
-		$dv = '<p><div id="'.$code.'" align="center"';
+		$dv = '<p><div id="'.$code.'" align="left"';
 		$dv .= ' style="width: '.$dw.'px">';
 
 		extract($args);
 
+		$bc  = $this->plinst->get_comments_open_option();
+		$bp  = $this->plinst->get_pings_open_option();
+		$inf = $this->plinst->get_store_info();
+		
 		// note *no default* for title; allow empty title so that
 		// user may place this below another widget with
 		// apparent continuity (subject to filters)
 		$title = apply_filters('widget_title',
 			empty($instance['title']) ? '' : $instance['title'],
 			$instance, $this->id_base);
+
+		$cap = array_key_exists('caption', $instance)
+			? $instance['caption'] : false;
 
 		echo $before_widget;
 
@@ -1893,7 +1937,47 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		}
 
 		echo $dv;
-		$this->plinst->put_swf_tags($uswf, $pr);
+
+		$wt = 'wptexturize';  // display with char translations
+		$htype = 'label ';
+
+		if ( $bc != 'false' || $bp != 'false' ) {
+			printf("\n\t<{$htype} for=\"Spam_UL1\">%s</{$htype}><ul name=\"Spam_UL1\">",
+				$wt(__('Checking Addresses for:', 'spambl_l10n'))
+			);
+			if ( $bc != 'false' ) {
+				printf("\n\t\t<li>%s</li>\n",
+					$wt(__('comments', 'spambl_l10n'))
+				);
+			}
+			if ( $bp != 'false' ) {
+				printf("\n\t\t<li>%s</li>\n",
+					$wt(__('pings', 'spambl_l10n'))
+				);
+			}
+			echo "\t</ul>\n";
+		}
+		
+		if ( $inf ) {
+			printf("\n\t<{$htype} for=\"Spam_UL2\">%s</{$htype}><ul name=\"Spam_UL2\">",
+				$wt(__('Information:', 'spambl_l10n'))
+			);
+			foreach ( $inf['k'] as $k ) {
+				$v = $inf[$k];
+				switch ( $k ) {
+					case 'row_count':
+						printf("\n\t\t<li>%s</li>\n",
+							sprintf($wt(_n('%d address listed',
+							   '%d addresses listed',
+							   $v, 'spambl_l10n')), $v)
+						);
+					default:
+						break;
+				}
+			}
+			echo "\t</ul>\n";
+		}
+
 		if ( $cap ) {
 			echo '</p><p><span align="center">' .$cap. '</span></p><p>';
 		}
@@ -1903,28 +1987,19 @@ class Spam_BLIP_widget_class extends WP_Widget {
 	}
 
 	public function update($new_instance, $old_instance) {
-		$pr = self::Spam_BLIP_plugin_params;
-		$pr = new $pr();
+		$i = array('title' => '', 'caption' => '');
 		
 		if ( is_array($old_instance) ) {
-			$pr->setnewarray($old_instance);
-		}
-		if ( is_array($new_instance) ) {
-			$pr->setnewarray($new_instance);
+			array_merge($i, $old_instance);
 		}
 		
-		$pr->sanitize();
-		$i = $pr->getparams();
 		if ( is_array($new_instance) ) {
 			// for pesky checkboxes; not present if unchecked, but
 			// present 'false' is wanted
 			foreach ( $i as $k => $v ) {
-				if ( ! array_key_exists($k, $new_instance) ) {
-					$t = $pr->getdefault($k);
-					// booleans == checkboxes
-					if ( $t == 'true' || $t == 'false' ) {
-						$i[$k] = 'false';
-					}
+				if ( array_key_exists($k, $new_instance) ) {
+					$t = $new_instance[$k];
+					$i[$k] = $t;
 				}
 			}
 		}
@@ -1934,12 +2009,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		}
 		if ( ! array_key_exists('title', $i) ) {
 			$i['title'] = '';
-		}
-		if ( ! $i['width'] ) {
-			$i['width'] = self::defwidth;
-		}
-		if ( ! $i['height'] ) {
-			$i['height'] = self::defheight;
 		}
 
 		return $i;
@@ -1955,10 +2024,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		// still leaves room for error; this code assumes UTF-8 presently)
 		$et = 'rawurlencode'; // %XX -- for transfer
 
-		$pr = self::Spam_BLIP_plugin_params;
-		$pr = new $pr(array('width' => self::defwidth,
-			'height' => self::defheight));
-		$instance = wp_parse_args((array)$instance, $pr->getparams());
+		$pr = array('title' => 'Blacklist hits', 'caption' => 'Yeah!');
+		$instance = wp_parse_args((array)$instance, $pr);
 
 		$val = '';
 		if ( array_key_exists('title', $instance) ) {
@@ -1967,30 +2034,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$id = $this->get_field_id('title');
 		$nm = $this->get_field_name('title');
 		$tl = $wt(__('Widget title:', 'spambl_l10n'));
-
-		// file select by ext pattern
-		$mpat = $this->plinst->get_mfilter_pat();
-		// files array from uploads dirs (empty if none)
-		$rhu = $this->plinst->r_find_uploads($mpat['m'], true);
-		$af = &$rhu['rf'];
-		$au = &$rhu['wu'];
-		$aa = &$rhu['at'];
-		// url base for upload dirs files
-		$ub = rtrim($au['baseurl'], '/') . '/';
-		// directory base for upload dirs files
-		$up = rtrim($au['basedir'], '/') . '/';
-		$slfmt =
-			'<select class="widefat" name="%s" id="%s" onchange="%s">';
-		$sgfmt = '<optgroup label="%s">' . "\n";
-		$sofmt = '<option value="%s">%s</option>' . "\n";
-		// expect jQuery to be loaded by WP (tried $() invocation
-		// but N.G. w/ MSIE. Sheesh.)
-		$jsfmt = "jQuery('[id=%s]').val";
-		// BAD
-		//$jsfmt .= '(unescape(this.options[selectedIndex].value))';
-		// better
-		$jsfmt .= '(decodeURIComponent(this.options[selectedIndex].value))';
-		$jsfmt .= '; return false;';
 
 		?>
 
@@ -2008,295 +2051,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
 		<input class="widefat" id="<?php echo $id; ?>"
 			name="<?php echo $nm; ?>"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php
-		$val = $instance['url'];
-		$id = $this->get_field_id('url');
-		$nm = $this->get_field_name('url');
-		$tl = $wt(__('Url or media library ID:', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php // selects for URLs and attachment id's
-		// escape url field id for jQuery selector
-		$id = $this->plinst->esc_jqsel($id);
-		$js = sprintf($jsfmt, $id);
-		// optional print <select >
-		if ( count($af) > 0 ) {
-			$id = $this->get_field_id('files');
-			$k = $this->get_field_name('files');
-			$tl = $wt(__('Url from uploads directory:', 'spambl_l10n'));
-			printf('<p><label for="%s">%s</label>' . "\n", $id, $tl);
-			// <select>
-			printf($slfmt . "\n", $k, $id, $js);
-			// <options>
-			printf($sofmt, '', $wt(__('none', 'spambl_l10n')));
-			foreach ( $af as $d => $e ) {
-				$hit = array();
-				for ( $i = 0; $i < count($e); $i++ )
-					if ( preg_match($mpat['av'], $e[$i]) )
-						$hit[] = &$af[$d][$i];
-				if ( empty($hit) )
-					continue;
-				printf($sgfmt, $ht($d));
-				foreach ( $hit as $fv ) {
-					$tu = rtrim($ub, '/') . '/' . $d . '/' . $fv;
-					$fv = $ht($fv);
-					printf($sofmt, $et($tu), $fv);
-				}
-				echo "</optgroup>\n";
-			}
-			// end select
-			echo "</select></td></tr>\n";
-		} // end if there are upload files
-		if ( ! empty($aa) ) {
-			$id = $this->get_field_id('atch');
-			$k = $this->get_field_name('atch');
-			$tl = $wt(__('Select ID from media library:', 'spambl_l10n'));
-			printf('<p><label for="%s">%s</label>' . "\n", $id, $tl);
-			// <select>
-			printf($slfmt . "\n", $k, $id, $js);
-			// <options>
-			printf($sofmt, '', $wt(__('none', 'spambl_l10n')));
-			foreach ( $aa as $fn => $fi ) {
-				$m = basename($fn);
-				if ( ! preg_match($mpat['av'], $m) )
-					continue;
-				$ts = $m . " (" . $fi . ")";
-				printf($sofmt, $et($fi), $ht($ts));
-			}
-			// end select
-			echo "</select></td></tr>\n";
-		} // end if there are upload files
-		?>
-
-		<?php
-		$val = $instance['playpath'];
-		$id = $this->get_field_id('playpath');
-		$nm = $this->get_field_name('playpath');
-		$tl = $wt(__('Playpath (rtmp) or co-video (mp3):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php
-		$val = $instance['iimage'];
-		$id = $this->get_field_id('iimage');
-		$nm = $this->get_field_name('iimage');
-		$tl = $wt(__('Url of initial image file (optional):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php // selects for URLs and attachment id's
-		// escape url field id for jQuery selector
-		$id = $this->plinst->esc_jqsel($id);
-		$js = sprintf($jsfmt, $id);
-		// optional print <select >
-		if ( count($af) > 0 ) {
-			$id = $this->get_field_id('ifiles');
-			$k = $this->get_field_name('ifiles');
-			$tl = $wt(__('Load image from uploads directory:', 'spambl_l10n'));
-			printf('<p><label for="%s">%s</label>' . "\n", $id, $tl);
-			// <select>
-			printf($slfmt . "\n", $k, $id, $js);
-			// <options>
-			printf($sofmt, '', $wt(__('none', 'spambl_l10n')));
-			foreach ( $af as $d => $e ) {
-				$hit = array();
-				for ( $i = 0; $i < count($e); $i++ )
-					if ( preg_match($mpat['i'], $e[$i]) )
-						$hit[] = &$af[$d][$i];
-				if ( empty($hit) )
-					continue;
-				printf($sgfmt, $ht($d));
-				foreach ( $hit as $fv ) {
-					$tu = rtrim($ub, '/') . '/' . $d . '/' . $fv;
-					$fv = $ht($fv);
-					printf($sofmt, $et($tu), $fv);
-				}
-				echo "</optgroup>\n";
-			}
-			// end select
-			echo "</select></td></tr>\n";
-		} // end if there are upload files
-		if ( ! empty($aa) ) {
-			$id = $this->get_field_id('iatch');
-			$k = $this->get_field_name('iatch');
-			$tl = $wt(__('Load image ID from media library:', 'spambl_l10n'));
-			printf('<p><label for="%s">%s</label>' . "\n", $id, $tl);
-			// <select>
-			printf($slfmt . "\n", $k, $id, $js);
-			// <options>
-			printf($sofmt, '', $wt(__('none', 'spambl_l10n')));
-			foreach ( $aa as $fn => $fi ) {
-				$m = basename($fn);
-				if ( ! preg_match($mpat['i'], $m) )
-					continue;
-				$ts = $m . " (" . $fi . ")";
-				printf($sofmt, $et($fi), $ht($ts));
-			}
-			// end select
-			echo "</select></td></tr>\n";
-		} // end if there are upload files
-		?>
-
-		<?php
-		$val = $instance['audio'];
-		$id = $this->get_field_id('audio');
-		$nm = $this->get_field_name('audio');
-		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Medium is audio (e.g. *.mp3):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
-			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
-
-		<?php
-		$val = $wt($instance['width']);
-		$id = $this->get_field_id('width');
-		$nm = $this->get_field_name('width');
-		$tl = $wt(__('Width (default ', 'spambl_l10n').self::defwidth.__('):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php
-		$val = $wt($instance['height']);
-		$id = $this->get_field_id('height');
-		$nm = $this->get_field_name('height');
-		$tl = $wt(__('Height (default ', 'spambl_l10n').self::defheight.__('):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php
-		$val = $instance['aspectautoadj'];
-		$id = $this->get_field_id('aspectautoadj');
-		$nm = $this->get_field_name('aspectautoadj');
-		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Auto aspect (e.g. 360x240 to 4:3):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
-			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
-
-		<?php
-		$val = $instance['displayaspect'];
-		$id = $this->get_field_id('displayaspect');
-		$nm = $this->get_field_name('displayaspect');
-		$tl = $wt(__('Display aspect (e.g. 4:3, precludes Auto):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php
-		$val = $instance['pixelaspect'];
-		$id = $this->get_field_id('pixelaspect');
-		$nm = $this->get_field_name('pixelaspect');
-		$tl = $wt(__('Pixel aspect (e.g. 8:9, precluded by Display):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php
-		$val = $wt($instance['volume']);
-		$id = $this->get_field_id('volume');
-		$nm = $this->get_field_name('volume');
-		$tl = $wt(__('Initial volume (0-100):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;"
-			type="text" value="<?php echo $val; ?>" /></p>
-
-		<?php
-		$val = $instance['play'];
-		$id = $this->get_field_id('play');
-		$nm = $this->get_field_name('play');
-		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Play on load (else waits for play button):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
-			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
-
-		<?php
-		$val = $instance['loop'];
-		$id = $this->get_field_id('loop');
-		$nm = $this->get_field_name('loop');
-		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Loop play:', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
-			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
-
-		<?php
-		$val = $instance['hidebar'];
-		$id = $this->get_field_id('hidebar');
-		$nm = $this->get_field_name('hidebar');
-		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Hide control bar initially:', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
-			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
-
-		<?php
-		$val = $instance['disablebar'];
-		$id = $this->get_field_id('disablebar');
-		$nm = $this->get_field_name('disablebar');
-		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Hide and disable control bar:', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
-			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
-
-		<?php
-		$val = $instance['allowfull'];
-		$id = $this->get_field_id('allowfull');
-		$nm = $this->get_field_name('allowfull');
-		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Allow full screen:', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
-			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
-
-		<?php
-		$val = $ht($instance['barheight']);
-		$id = $this->get_field_id('barheight');
-		$nm = $this->get_field_name('barheight');
-		$tl = $wt(__('Control bar Height (20-50):', 'spambl_l10n'));
-		?>
-		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
-		<input class="widefat" id="<?php echo $id; ?>"
-			name="<?php echo $nm; ?>" style="width:16%;"
 			type="text" value="<?php echo $val; ?>" /></p>
 
 		<?php
