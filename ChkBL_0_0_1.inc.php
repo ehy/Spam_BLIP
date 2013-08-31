@@ -124,7 +124,7 @@ class ChkBL_0_0_1 {
 	public static function mk_rbl_host($revaddr, $dom) {
 		return sprintf('%s.%s.', $revaddr, trim($dom));
 	}
-	
+
 	// wrap PHP lookup to get a simple false on failure
 	public static function chk_dns($hostname) {
 		$r = gethostbyname($hostname);
@@ -325,6 +325,32 @@ class ChkBL_0_0_1 {
 			return false;
 		}
 		return $v[0][2];
+	}
+	
+	// Check if connection is a tor exit; TOR has crafted
+	// the DNS so that the query must be done from a connected
+	// server; the args with default false will use the
+	// CGI envirronment if not passed -- $sa is server address,
+	// $p is port
+	public static function chk_tor_exit($addr, $sa = false, $p = false)
+	{
+		$sp  = $p ? $p : $_SERVER['SERVER_PORT'];
+		$sa  = self::mk_reversed(
+			$sa ? $sa : $_SERVER['SERVER_ADDR']
+		);
+		$chk = self::mk_reversed($addr);
+		$dom = 'ip-port.exitlist.torproject.org';
+		$hit = '127.0.0.2';
+
+		$hst = sprintf('%s.%u.%s', $chk, $sp, $sa);
+		$hst = self::mk_rbl_host($hst, $dom);
+
+		$res = self::chk_dns($hst);
+		if ( trim($res) == $hit ) {
+			return true;
+		}
+
+		return false;
 	}
 }
 endif; // if ( ! class_exists() ) :

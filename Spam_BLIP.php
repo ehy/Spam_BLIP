@@ -146,6 +146,8 @@ class Spam_BLIP_class {
 	const optcommflt = 'commflt';
 	// filter pings_open?
 	const optpingflt = 'pingflt';
+	// pass, or 'whitelist', TOR exit nodes?
+	const opttorpass = 'torpass';
 	// keep rbl hit data?
 	const optrecdata = 'recdata';
 	// use rbl hit data?
@@ -176,6 +178,8 @@ class Spam_BLIP_class {
 	const defcommflt = 'true';
 	// filter pingss_open?
 	const defpingflt = 'true';
+	// pass, or 'whitelist', TOR exit nodes?
+	const deftorpass = 'false';
 	// keep rbl hit data?
 	const defrecdata = 'false';
 	// use rbl hit data?
@@ -292,6 +296,7 @@ class Spam_BLIP_class {
 			self::optverbose => self::defverbose,
 			self::optcommflt => self::defcommflt,
 			self::optpingflt => self::defpingflt,
+			self::opttorpass => self::deftorpass,
 			self::optrecdata => self::defrecdata,
 			self::optusedata => self::defusedata,
 			self::optplugwdg => self::defplugwdg,
@@ -374,6 +379,11 @@ class Spam_BLIP_class {
 				self::optpingflt,
 				$items[self::optpingflt],
 				array($this, 'put_pings_opt'));
+		$fields[$nf++] = new $Cf(self::opttorpass,
+				self::wt(__('Whitelist (pass) TOR exit nodes:', 'spambl_l10n')),
+				self::opttorpass,
+				$items[self::opttorpass],
+				array($this, 'put_torpass_opt'));
 
 		// section object includes description callback
 		$sections[$ns++] = new $Cs($fields,
@@ -910,6 +920,7 @@ class Spam_BLIP_class {
 				case self::optverbose:
 				case self::optcommflt:
 				case self::optpingflt:
+				case self::opttorpass:
 				case self::optrecdata:
 				case self::optusedata:
 				case self::optplugwdg:
@@ -988,6 +999,23 @@ class Spam_BLIP_class {
 		$t = self::wt(__('The "Check blacklist for pings" option 
 			is similar to "Check blacklist for comments",
 			but for pings.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Whitelist TOR addresses" option 
+			enables a special lookup to try to determine if the
+			connecting address is a TOR exit node (there are some
+			false negatives). If it is found to be one, it is
+			allowed to comment or ping. This option might be
+			important if your site has content that is political,
+			or in some way controversial, as visitors you would
+			welcome might like to use TOR. TOR is an important
+			tool for Internet anonymity, but unfortunately spammers
+			have abused it, and  so some DNS blacklist operators
+			include any TOR address. This option probably will let
+			more spam comments be posted, but it might work well
+			along with another sort of spam blocker, such as one
+			that analyses comment content, as a second line of
+			defense.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
@@ -1161,6 +1189,13 @@ class Spam_BLIP_class {
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
+	// callback, pass/whitelist TOR exit nodes?
+	public function put_torpass_opt($a) {
+		$tt = self::wt(__('Whitelist TOR addresses', 'spambl_l10n'));
+		$k = self::opttorpass;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
 	// callback, rbl data store?
 	public function put_recdata_opt($a) {
 		$tt = self::wt(__('Store blacklist lookup results', 'spambl_l10n'));
@@ -1278,6 +1313,11 @@ class Spam_BLIP_class {
 	// should the filter_pings_open() rbl check be done
 	public static function get_pings_open_option() {
 		return self::opt_by_name(self::optpingflt);
+	}
+
+	// for whether to pass/whitelist tor exit nodes
+	public static function get_torwhite_option() {
+		return self::opt_by_name(self::opttorpass);
 	}
 
 	/**
@@ -1473,6 +1513,11 @@ class Spam_BLIP_class {
 			return $def;
 		}
 
+		// option to whitelist addresses that TOR lists as exit nodes
+		if ( $this->tor_optional_whitelist($addr, $statype) ) {
+			return $def;
+		}
+		
 		$pretime = self::best_time();
 
 		// TODO: record stats
@@ -1587,6 +1632,55 @@ class Spam_BLIP_class {
 		self::hit_optional_bailout($addr, $statype);
 
 		return $ret;
+	}
+
+	// if option to whitelist TOR is set and address is *found*
+	// to be a TOR exit node (there are false negatives), then
+	// return true; else return false
+	protected function tor_optional_whitelist($addr, $statype) {
+		// if opt
+		if ( self::get_torwhite_option() == 'false' ) {
+			return false;
+		}
+
+		if ( self::get_usedata_option() != 'false' ) {
+			$d = $this->store_get_address($addr);
+			// use 'other2' for tor exit node
+			if ( is_array($d) && $d['lasttype'] === 'other2' ) {
+			self::errlog("TESTING: FOUND TOR EXIT NODE {$addr} DATA");
+				return true;
+			}
+		}
+
+		$s = $_SERVER["SERVER_ADDR"];
+		if ( $this->ipchk->chk_resv_addr($s) ) {
+			// broken proxy/cache/frontend in shared hosting?
+			// hopefully this DNS query will return with success
+			// very quickly, as the domain should be handled
+			// on this net or close to it; note the lack of
+			// trailing dot, too
+			$s = gethostbyname($_SERVER["SERVER_NAME"]);
+			// test PHP's peculiar error return
+			if ( $s == $_SERVER["SERVER_NAME"] ) {
+				$s = false;
+			}
+		}
+		if ( $s && ChkBL_0_0_1::chk_tor_exit($addr, $s) ) {
+			self::errlog("TESTING: FOUND TOR EXIT NODE {$addr} DNS");
+			// optionally record stats
+			if ( self::get_recdata_option() != 'false' ) {
+				// use 'other2' for tor exit node
+				$this->store_update_array(
+					$this->store_make_array(
+						$addr, 1, self::best_time(), 'other2'
+					)
+				);
+			}
+			
+			return true;
+		}
+		
+		return false;
 	}
 
 	protected static function hit_optional_bailout($addr, $statype) {
@@ -1878,8 +1972,6 @@ endif; // if ( ! class_exists('Spam_BLIP_class') ) :
  */
 if ( ! class_exists('Spam_BLIP_widget_class') ) :
 class Spam_BLIP_widget_class extends WP_Widget {
-	// main plugin class name
-	const Spam_BLIP_plugin_plugin = 'Spam_BLIP_class';
 	// an instance of the main plugun class
 	protected $plinst;
 	
@@ -1890,7 +1982,7 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		// Label shown on widgets page
 		$lb =  __('Spam_BLIP Plugin Data', 'spambl_l10n');
 		// Description shown under label shown on widgets page
-		$desc = __('Display comment spam blacklist stored data information', 'spambl_l10n');
+		$desc = __('Display comment and ping spam blacklist stored data information', 'spambl_l10n');
 		$opts = array('classname' => $cl, 'description' => $desc);
 
 		// control opts width affects the parameters form,
@@ -1908,12 +2000,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			return;
 		}
 		
-		$code = 'widget-div';
-		$dw = 200;
-		// use no class, but do use deprecated align
-		$dv = '<p><div id="'.$code.'" align="left"';
-		$dv .= ' style="width: '.$dw.'px">';
-
 		extract($args);
 
 		$bc  = $this->plinst->get_comments_open_option();
@@ -1936,37 +2022,40 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			echo $before_title . $title . $after_title;
 		}
 
-		echo $dv;
+		// use no class, but do use deprecated align
+		$code = 'widget-div';
+		$dv = '<div id="'.$code.'" align="left">';
+		echo "\n<!-- Spam BLIP plugin: info widget div -->\n{$dv}";
 
 		$wt = 'wptexturize';  // display with char translations
-		$htype = 'label ';
+		$htype = 'h6';        // depends on css of theme; who knows?
 
 		if ( $bc != 'false' || $bp != 'false' ) {
-			printf("\n\t<{$htype} for=\"Spam_UL1\">%s</{$htype}><ul name=\"Spam_UL1\">",
+			printf("\n\t<{$htype}>%s</{$htype}><ul>",
 				$wt(__('Checking Addresses for:', 'spambl_l10n'))
 			);
 			if ( $bc != 'false' ) {
-				printf("\n\t\t<li>%s</li>\n",
+				printf("\n\t\t<li>%s</li>",
 					$wt(__('comments', 'spambl_l10n'))
 				);
 			}
 			if ( $bp != 'false' ) {
-				printf("\n\t\t<li>%s</li>\n",
+				printf("\n\t\t<li>%s</li>",
 					$wt(__('pings', 'spambl_l10n'))
 				);
 			}
-			echo "\t</ul>\n";
+			echo "\n\t</ul>\n";
 		}
 		
 		if ( $inf ) {
-			printf("\n\t<{$htype} for=\"Spam_UL2\">%s</{$htype}><ul name=\"Spam_UL2\">",
+			printf("\n\t<{$htype}>%s</{$htype}><ul>",
 				$wt(__('Information:', 'spambl_l10n'))
 			);
 			foreach ( $inf['k'] as $k ) {
 				$v = $inf[$k];
 				switch ( $k ) {
 					case 'row_count':
-						printf("\n\t\t<li>%s</li>\n",
+						printf("\n\t\t<li>%s</li>",
 							sprintf($wt(_n('%d address listed',
 							   '%d addresses listed',
 							   $v, 'spambl_l10n')), $v)
@@ -1975,13 +2064,14 @@ class Spam_BLIP_widget_class extends WP_Widget {
 						break;
 				}
 			}
-			echo "\t</ul>\n";
+			echo "\n\t</ul>\n";
 		}
 
 		if ( $cap ) {
-			echo '</p><p><span align="center">' .$cap. '</span></p><p>';
+			echo '<p><span align="center">' .$wt($cap). '</span></p>';
 		}
-		echo '</div></p>';
+		echo "\n</div>\n";
+		echo "<!-- Spam BLIP plugin: info widget div ends -->\n";
 
 		echo $after_widget;
 	}
@@ -2024,8 +2114,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		// still leaves room for error; this code assumes UTF-8 presently)
 		$et = 'rawurlencode'; // %XX -- for transfer
 
-		$pr = array('title' => 'Blacklist hits', 'caption' => 'Yeah!');
-		$instance = wp_parse_args((array)$instance, $pr);
+		$val = array('title' => '', 'caption' => '');
+		$instance = wp_parse_args((array)$instance, $val);
 
 		$val = '';
 		if ( array_key_exists('title', $instance) ) {
