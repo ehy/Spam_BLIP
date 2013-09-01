@@ -1647,7 +1647,11 @@ class Spam_BLIP_class {
 			$d = $this->store_get_address($addr);
 			// use 'other2' for tor exit node
 			if ( is_array($d) && $d['lasttype'] === 'other2' ) {
-			self::errlog("TESTING: FOUND TOR EXIT NODE {$addr} DATA");
+				// TRANSLATORS: %s is IP4 address; DATA is the
+				// ddata store (db) used by this plugin
+				$m = __('Found "%s" to be a tor exit, in data -- passed per option', 'spambl_l10n');
+				// mark for this invocation
+				$this->rbl_result = array(false);
 				return true;
 			}
 		}
@@ -1666,17 +1670,22 @@ class Spam_BLIP_class {
 			}
 		}
 		if ( $s && ChkBL_0_0_1::chk_tor_exit($addr, $s) ) {
-			self::errlog("TESTING: FOUND TOR EXIT NODE {$addr} DNS");
+			// TRANSLATORS: %s is IP4 address; DNS is the
+			// domain name system
+			$m = __('Found "%s" to be a tor exit, by DNS -- passed per option', 'spambl_l10n');
+			self::errlog(sprintf($m, $addr));
 			// optionally record stats
 			if ( self::get_recdata_option() != 'false' ) {
 				// use 'other2' for tor exit node
 				$this->store_update_array(
 					$this->store_make_array(
-						$addr, 1, self::best_time(), 'other2'
+						$addr, 1, (int)self::best_time(), 'other2'
 					)
 				);
 			}
 			
+			// mark for this invocation
+			$this->rbl_result = array(false);
 			return true;
 		}
 		
