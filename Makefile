@@ -1,8 +1,13 @@
 #! /usr/bin/make -f
+# License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
 
 PRJVERS = 1.0.0
 PRJSTEM = Spam_BLIP
 PRJNAME = $(PRJSTEM)-$(PRJVERS)
+
+COPYRIGHT_HOLDER = Ed Hynan
+COPYRIGHT_YEAR   = 2013
+TRANS_BUGS_EMAIL = edhynan@gmail.com
 
 SRCS = ${PRJSTEM}.php \
 	Options_0_0_2a.inc.php \
@@ -67,9 +72,6 @@ en_US-mo $(LCFPO): $(LCPOT)
 	echo If you care about translations then check that \
 	GNU gettext package is installed; exit 0; }
 
-COPYRIGHT_HOLDER = Ed Hynan
-COPYRIGHT_YEAR   = 2013
-TRANS_BUGS_EMAIL = edhynan@gmail.com
 TOOLONGSTR = This file is distributed under the same license as the PACKAGE package.
 TOOLONGREP = This file is distributed under the same license as the $(PRJSTEM) package.
 
