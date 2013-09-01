@@ -240,6 +240,9 @@ class Spam_BLIP_class {
 	public static $pluginfile = null;
 
 	public function __construct($init = true) {
+		// admin or public invocation?
+		$adm = is_admin();
+
 		// if arg $init is false then this instance is just
 		// meant to provide options and such
 		$pf = self::mk_pluginfile();
@@ -259,24 +262,20 @@ class Spam_BLIP_class {
 			return;
 		}
 		
-		// keep it clean: {de,}activation
 		$cl = __CLASS__;
-		register_deactivation_hook($pf, array($cl, 'on_deactivate'));
-		register_activation_hook($pf,   array($cl,   'on_activate'));
-		register_uninstall_hook($pf,    array($cl,  'on_uninstall'));
+
+		if ( $adm ) {
+			// add 'Settings' link on the plugins page entry
+			// cannot be in activate hook
+			$name = plugin_basename($pf);
+			add_filter("plugin_action_links_$name",
+				array($cl, 'plugin_page_addlink'));
+		}
 
 		// some things are to be done in init hook: add
 		// hooks for shortcode and widget, and optionally
 		// posts processing to scan attachments, etc...
 		add_action('init', array($this, 'init_hook_func'));
-
-		// add 'Settings' link on the plugins page entry
-		// cannot be in activate hook
-		$name = plugin_basename($pf);
-		add_filter("plugin_action_links_$name",
-			array($cl, 'plugin_page_addlink'));
-		add_action('admin_print_scripts',
-			array($cl, 'filter_admin_print_scripts'));
 
 		// it's not enough to add this action in the activation hook;
 		// that alone does not work.  IAC administrative
@@ -618,9 +617,28 @@ class Spam_BLIP_class {
 	// to be done at WP init stage
 	public function init_hook_func () {
 		self::load_translations();
+		$this->init_opts();
+
+		$pf = self::mk_pluginfile();
+		// admin or public invocation?
+		$adm = is_admin();
+
+		$cl = __CLASS__;
+
+		if ( $adm ) {
+		// keep it clean: {de,}activation
+		if ( current_user_can('activate_plugins') ) {
+		register_deactivation_hook($pf, array($cl, 'on_deactivate'));
+		register_activation_hook($pf,   array($cl,   'on_activate'));
+		}
+		if ( current_user_can('install_plugins') ) {
+		register_uninstall_hook($pf,    array($cl,  'on_uninstall'));
+		}
+
+		add_action('admin_print_scripts',
+			array($cl, 'filter_admin_print_scripts'));
 
 		// Settings/Options page setup
-		$this->init_opts();
 		if ( current_user_can('manage_options') ) {
 			$this->init_settings_page();
 		}
@@ -630,6 +648,7 @@ class Spam_BLIP_class {
 		if ( self::get_recdata_option() != 'false' ) {
 			$this->store_create_table();
 		}
+		} else { // if ( $adm )
 
 		$scf = array($this, 'action_pre_comment_on_post');
 		add_action('pre_comment_on_post', $scf, 1);
@@ -642,6 +661,7 @@ class Spam_BLIP_class {
 
 		$scf = array($this, 'filter_pings_open');
 		add_filter('pings_open', $scf, 1);
+		} // if ( $adm )
 	}
 
 	public static function load_translations () {
