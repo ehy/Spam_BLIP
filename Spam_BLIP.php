@@ -44,30 +44,12 @@ Text Domain: spambl_l10n
 // each class must define static method id_token() which returns
 // the correct int, to help avoid name clashes
 if ( ! function_exists( 'Spam_BLIP_plugin_paranoid_require_class' ) ) :
-function Spam_BLIP_plugin_paranoid_require_class ($cl, $rfunc = 'require_once') {
+function Spam_BLIP_plugin_paranoid_require_class ($cl) {
 	$id = 0xED00AA33;
 	$meth = 'id_token';
 	if ( ! class_exists($cl) ) {
 		$d = plugin_dir_path(__FILE__).'/'.$cl.'.inc.php';
-		switch ( $rfunc ) {
-			case 'require_once':
-				require_once $d;
-				break;
-			case 'require':
-				require $d;
-				break;
-			case 'include_once':
-				include_once $d;
-				break;
-			case 'include':
-				include $d;
-				break;
-			default:
-				$s = '' . $rfunc;
-				$s = sprintf('%s: what is %s?', __FUNCTION__, $s);
-				wp_die($s);
-				break;
-		}
+		require_once $d;
 	}
 	if ( method_exists($cl, $meth) ) {
 		$t = call_user_func(array($cl, $meth));
@@ -89,7 +71,7 @@ Spam_BLIP_plugin_paranoid_require_class('Options_0_0_2a');
 Spam_BLIP_plugin_paranoid_require_class('ChkBL_0_0_1');
 
 /**********************************************************************\
- *  missing functions that must be visible for definitions            *
+ *  misc. functions                                                   *
 \**********************************************************************/
 
 /**
@@ -152,6 +134,10 @@ class Spam_BLIP_class {
 	const optrecdata = 'recdata';
 	// use rbl hit data?
 	const optusedata = 'usedata';
+	// rbl hit data ttl
+	const optttldata = 'ttldata';
+	// rbl maximum data records
+	const optmaxdata = 'maxdata';
 	// optplugwdg -- use plugin's widget
 	const optplugwdg = 'widget'; // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
@@ -184,6 +170,10 @@ class Spam_BLIP_class {
 	const defrecdata = 'false';
 	// use rbl hit data?
 	const defusedata = 'false';
+	// rbl hit data ttl
+	const defttldata = '86400'; // 1 day, seconds
+	// rbl maximum data records
+	const defmaxdata = '50';
 	// optplugwdg -- use plugin's widget
 	const defplugwdg = 'false';  // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
@@ -291,13 +281,32 @@ class Spam_BLIP_class {
 	// is true include only those options associated with a checkbox
 	// on the settings page -- useful for the validate function
 	protected static function get_opts_defaults($chkonly = false) {
-		$items = array(
+		if ( $chkonly === true ) {
+			return array(
+				self::optverbose => self::defverbose,
+				self::optcommflt => self::defcommflt,
+				self::optpingflt => self::defpingflt,
+				self::opttorpass => self::deftorpass,
+				self::optrecdata => self::defrecdata,
+				self::optusedata => self::defusedata,
+				self::optplugwdg => self::defplugwdg,
+				self::optipnglog => self::defipnglog,
+				self::optbliplog => self::defbliplog,
+				self::optbailout => self::defbailout,
+				self::optdelopts => self::defdelopts,
+				self::optdelstor => self::defdelstor,
+			);
+		}
+		
+		return array(
 			self::optverbose => self::defverbose,
 			self::optcommflt => self::defcommflt,
 			self::optpingflt => self::defpingflt,
 			self::opttorpass => self::deftorpass,
 			self::optrecdata => self::defrecdata,
 			self::optusedata => self::defusedata,
+			self::optttldata => self::defttldata,
+			self::optmaxdata => self::defmaxdata,
 			self::optplugwdg => self::defplugwdg,
 			self::optipnglog => self::defipnglog,
 			self::optbliplog => self::defbliplog,
@@ -305,12 +314,6 @@ class Spam_BLIP_class {
 			self::optdelopts => self::defdelopts,
 			self::optdelstor => self::defdelstor,
 		);
-		
-		if ( $chkonly !== true ) {
-			// TODO: so far there are only checkboxes
-		}
-		
-		return $items;
 	}
 	
 	// initialize plugin options from defaults or WPDB
@@ -396,15 +399,25 @@ class Spam_BLIP_class {
 		$nf = 0;
 		$fields = array();
 		$fields[$nf++] = new $Cf(self::optrecdata,
-				self::wt(__('Keep Data:', 'spambl_l10n')),
+				self::wt(__('Keep data:', 'spambl_l10n')),
 				self::optrecdata,
 				$items[self::optrecdata],
 				array($this, 'put_recdata_opt'));
 		$fields[$nf++] = new $Cf(self::optusedata,
-				self::wt(__('Use Data:', 'spambl_l10n')),
+				self::wt(__('Use data:', 'spambl_l10n')),
 				self::optusedata,
 				$items[self::optusedata],
 				array($this, 'put_usedata_opt'));
+		$fields[$nf++] = new $Cf(self::optttldata,
+				self::wt(__('Data records TTL:', 'spambl_l10n')),
+				self::optttldata,
+				$items[self::optttldata],
+				array($this, 'put_ttldata_opt'));
+		$fields[$nf++] = new $Cf(self::optmaxdata,
+				self::wt(__('Maximum data records:', 'spambl_l10n')),
+				self::optmaxdata,
+				$items[self::optmaxdata],
+				array($this, 'put_maxdata_opt'));
 
 		// misc
 		$sections[$ns++] = new $Cs($fields,
@@ -937,6 +950,76 @@ class Spam_BLIP_class {
 			$oo = trim($a_orig[$k]);
 
 			switch ( $k ) {
+				// Option buttons
+				case self::optttldata . '_text': // FPO; see below:
+					break;
+				case self::optttldata:
+					switch ( $ot ) {
+						case ''.(3600):       //'One (1) hour'
+						case ''.(3600*6):     //'Six (6) hours'
+						case ''.(3600*12):    //'Twelve (12) hours'
+						case ''.(3600*24):    //'One (1) day'
+						case ''.(3600*24*7):  //'One (1) week'
+							$a_out[$k] = $ot;
+							$nupd += ($ot === $oo) ? 0 : 1;
+							break;
+						default:               //'Set a value:'
+							$ot = trim($opts[self::optttldata.'_text']);
+							// 9 decimal digits > 30 years in secs
+							$re = '/^[+-]?[0-9]{2,9}$/';
+							if ( preg_match($re, $ot) == 1 ) {
+								if ( (int)$ot < 0 ) { $ot = '0'; }
+								$a_out[$k] = ltrim($ot, '+');
+								$nupd += ($ot === $oo) ? 0 : 1;
+								break;
+							}
+							$e = __('bad TTL option: "%s"', 'swfput_l10n');
+							$e = sprintf($e, $ot);
+							self::errlog($e);
+							$t = __('TTL option', 'swfput_l10n');
+							add_settings_error(self::wt($t),
+								sprintf('%s[%s]', self::opt_group, $k),
+								self::wt($e), 'error');
+							$a_out[$k] = $oo;
+							$nerr++;
+							break;
+					}
+					break;
+				case self::optmaxdata . '_text': // FPO; see below:
+					break;
+				case self::optmaxdata:
+					switch ( $ot ) {
+						case '10':
+						case '50':
+						case '100':
+						case '500':
+						case '1000':
+							$a_out[$k] = $ot;
+							$nupd += ($ot === $oo) ? 0 : 1;
+							break;
+						default:               //'Set a value:'
+							$ot = trim($opts[self::optmaxdata.'_text']);
+							// 9 decimal digits, billion - 1; plenty
+							$re = '/^[+-]?[0-9]{1,9}$/';
+							if ( preg_match($re, $ot) == 1 ) {
+								if ( (int)$ot < 1 ) { $ot = '50'; }
+								$a_out[$k] = ltrim($ot, '+');
+								$nupd += ($ot === $oo) ? 0 : 1;
+								break;
+							}
+							$e = __('bad maximum: "%s"', 'swfput_l10n');
+							$e = sprintf($e, $ot);
+							self::errlog($e);
+							$t = __('Maximum records option', 'swfput_l10n');
+							add_settings_error(self::wt($t),
+								sprintf('%s[%s]', self::opt_group, $k),
+								self::wt($e), 'error');
+							$a_out[$k] = $oo;
+							$nerr++;
+							break;
+					}
+					break;
+				// Checkboxes
 				case self::optverbose:
 				case self::optcommflt:
 				case self::optpingflt:
@@ -976,8 +1059,11 @@ class Spam_BLIP_class {
 
 		// now register updates
 		if ( $nupd > 0 ) {
-			$str = $nerr == 0 ? __('Settings updated successfully', 'spambl_l10n') :
-				sprintf(__('Some settings (%d) updated', 'spambl_l10n'), $nupd);
+			$str = $nerr == 0 ?
+				__('Settings updated successfully', 'swfput_l10n') :
+				sprintf(_n('One (%d) setting updated',
+					'Some settings (%d) updated',
+					$nupd, 'swfput_l10n'), $nupd);
 			add_settings_error(self::opt_group, self::opt_group,
 				self::wt($str), 'updated');
 		}
@@ -1066,15 +1152,36 @@ class Spam_BLIP_class {
 			<em>WordPress</em> database, or the use of the
 			stored data to before DNS lookup.
 			</p><p>
-			The "Store" option enables recording of <em>hit</em> data
-			such as the connecting IP address, and the DNS
+			The "Keep data" option enables recording of <em>hit</em>
+			data such as the connecting IP address, and the DNS
 			blacklist domain that listed the address.
 			(This data is also used if included widget is
 			enabled.)
 			</p><p>
-			The "Use" option enables a check in any available
+			The "Use data" option enables a check in any available
 			stored data; if a hit is found there then the
-			DNS lookup is not performed.', 'spambl_l10n'));
+			DNS lookup is not performed.
+			</p><p>
+			"Data records TTL" sets an expiration time for individual
+			records in the data store. The records should not be kept
+			permanently, or even for very long, because the IP
+			address might not belong to the spammer, but rather
+			an ISP that was also abused by the spammer, and
+			which must be able to reuse the IP address. DNS
+			blacklist operators often use a low TTL (Time To Live) on
+			the records of most lists for this reason. The default
+			value is one day (86400 seconds). If you do not want
+			any of the presets, the text field accepts a value
+			in seconds, where zero (0) or less will disable the
+			TTL.
+			</p><p>
+			The "Maximum data records" option limits how many records
+			will be kept in the database. It is likely that as
+			the data grow larger, the oldest records will no
+			longer be needed. Records are judged old based on
+			the time last seen. Use your judgement with this:
+			if you always get large amounts of spam, a larger
+			value might be warranted.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
@@ -1230,6 +1337,108 @@ class Spam_BLIP_class {
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
+	// callback, ttl data store
+	public function put_ttldata_opt($a) {
+		$tt = self::wt(__('Set "Time To Live" of data store records', 'spambl_l10n'));
+		$k = self::optttldata;
+		$group = self::opt_group;
+		$va = array(
+			array(__('One (1) hour', 'spambl_l10n'), ''.(3600)),
+			array(__('Six (6) hours', 'spambl_l10n'), ''.(3600*6)),
+			array(__('Twelve (12) hours', 'spambl_l10n'), ''.(3600*12)),
+			array(__('One (1) day', 'spambl_l10n'), ''.(3600*24)),
+			array(__('One (1) week', 'spambl_l10n'), ''.(3600*24*7)),
+			array(__('Set a value in seconds:', 'spambl_l10n'), ''.(0))
+		);
+
+		$v = trim('' . $a[$k]);
+		$bhit = false;
+		$txtval = ''.(3600*24);
+
+		foreach ( $va as $oa ) {
+			$txt = self::wt($oa[0]);
+			$tim = $oa[1];
+			$chk = '';
+			if ( $tim === '0' ) { // field entry
+				if ( ! $bhit ) {
+					$chk = 'checked="checked" ';
+					$txtval = $v;
+				}
+			} else if ( $v === $tim ) { // radio val matched
+				$bhit = true;
+				$chk = 'checked="checked" ';
+			}
+
+			printf(
+				"\n".'<label><input type="radio" id="%s" ', $k
+			);
+			printf(
+				'name="%s[%s]" value="%s" %s/>', $group, $k, $tim, $chk
+			);
+			printf(
+				'&nbsp;%s</label>%s'."\n", $txt,
+				$tim === '0' ? '' : '<br/>'
+			);
+		}
+
+		// text input associated with the last option radio button
+		// note the "[${k}_text]" in the name attribute
+		echo "&nbsp;&nbsp;&nbsp;<input id=\"{$k}\" name=\""
+			. "{$group}[${k}_text]\" size=\"10\" type=\"text\""
+			. " value=\"{$txtval}\" />\n\n";
+	}
+
+	// callback, ttl data store max records
+	public function put_maxdata_opt($a) {
+		$tt = self::wt(__('Set maximum data store records to keep', 'spambl_l10n'));
+		$k = self::optmaxdata;
+		$group = self::opt_group;
+		$va = array(
+			array(__('Ten (10)', 'spambl_l10n'), '10'),
+			array(__('Fifty (50)', 'spambl_l10n'), '50'),
+			array(__('One hundred (100)', 'spambl_l10n'), '100'),
+			array(__('Five hundred (500)', 'spambl_l10n'), '500'),
+			array(__('One thousand (1000)', 'spambl_l10n'), '1000'),
+			array(__('Set a value:', 'spambl_l10n'), '0')
+		);
+
+		$v = trim('' . $a[$k]);
+		$bhit = false;
+		$txtval = '50';
+
+		foreach ( $va as $oa ) {
+			$txt = self::wt($oa[0]);
+			$tim = $oa[1];
+			$chk = '';
+			if ( $tim === '0' ) { // field entry
+				if ( ! $bhit ) {
+					$chk = 'checked="checked" ';
+					$txtval = $v;
+				}
+			} else if ( $v === $tim ) { // radio val matched
+				$bhit = true;
+				$chk = 'checked="checked" ';
+			}
+
+			printf(
+				"\n".'<label><input type="radio" id="%s" ', $k
+			);
+			printf(
+				'name="%s[%s]" value="%s" %s/>', $group, $k, $tim, $chk
+			);
+			printf(
+				'&nbsp;%s</label>%s'."\n", $txt,
+				$tim === '0' ? '' : '<br/>'
+			);
+		}
+
+		// text input associated with the last option radio button
+		// note the "[${k}_text]" in the name attribute
+		echo "&nbsp;&nbsp;&nbsp;<input id=\"{$k}\" name=\""
+			. "{$group}[${k}_text]\" size=\"10\" type=\"text\""
+			. " value=\"{$txtval}\" />\n\n";
+	}
+
 	// callback, use plugin's widget?
 	public function put_widget_opt($a) {
 		$tt = self::wt(__('Enable the included widget', 'spambl_l10n'));
@@ -1323,6 +1532,16 @@ class Spam_BLIP_class {
 	// for whether to use stored data
 	public static function get_usedata_option() {
 		return self::opt_by_name(self::optusedata);
+	}
+
+	// ttl of stored data; seconds (time)
+	public static function get_ttldata_option() {
+		return self::opt_by_name(self::optttldata);
+	}
+
+	// max number of stored data
+	public static function get_maxdata_option() {
+		return self::opt_by_name(self::optmaxdata);
 	}
 
 	// should the filter_comments_open() rbl check be done
@@ -2184,10 +2403,12 @@ endif; // if ( ! class_exists('Spam_BLIP_widget_class') ) :
  *  plugin 'main()' level code                                        *
 \**********************************************************************/
 
-/**
- * 'main()' here
- */
-if (!defined('WP_UNINSTALL_PLUGIN')&&$Spam_BLIP_plugin1_evh_instance_1 === null) {
+// Instance not needed (or wanted) if uninstalling; the registered
+// uninstall hook is saved by WP in an option so it is presistent,
+// and the plugin's static uninstall method will be called.
+// Else, make an instance, which triggers running.
+if ( ! defined('WP_UNINSTALL_PLUGIN')
+	&& $Spam_BLIP_plugin1_evh_instance_1 === null ) {
 	$Spam_BLIP_plugin1_evh_instance_1 = Spam_BLIP_class::instantiate();
 }
 
