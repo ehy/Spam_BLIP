@@ -946,6 +946,11 @@ class Spam_BLIP_class {
 		}
 	
 		foreach ( $opts as $k => $v ) {
+			if ( ! array_key_exists($k, $a_orig) ) {
+				// this happens for the IDs of extra form items
+				// in use, such as self::optttldata . '_text'
+				continue;
+			}
 			$ot = trim($v);
 			$oo = trim($a_orig[$k]);
 
@@ -966,7 +971,7 @@ class Spam_BLIP_class {
 						default:               //'Set a value:'
 							$ot = trim($opts[self::optttldata.'_text']);
 							// 9 decimal digits > 30 years in secs
-							$re = '/^[+-]?[0-9]{2,9}$/';
+							$re = '/^[+-]?[0-9]{1,9}$/';
 							if ( preg_match($re, $ot) == 1 ) {
 								if ( (int)$ot < 0 ) { $ot = '0'; }
 								$a_out[$k] = ltrim($ot, '+');
@@ -1002,7 +1007,7 @@ class Spam_BLIP_class {
 							// 9 decimal digits, billion - 1; plenty
 							$re = '/^[+-]?[0-9]{1,9}$/';
 							if ( preg_match($re, $ot) == 1 ) {
-								if ( (int)$ot < 1 ) { $ot = '50'; }
+								if ( (int)$ot < 0 ) { $ot = '0'; }
 								$a_out[$k] = ltrim($ot, '+');
 								$nupd += ($ot === $oo) ? 0 : 1;
 								break;
@@ -1800,6 +1805,8 @@ class Spam_BLIP_class {
 							$addr, 1, (int)$pretime, $statype
 						)
 					);
+					// maintain table
+					$this->tbl_maintain();
 				}
 				
 				// optionally die
@@ -1830,6 +1837,8 @@ class Spam_BLIP_class {
 					$addr, 1, (int)$pretime, $statype
 				)
 			);
+			// maintain table
+			$this->tbl_maintain();
 		}
 
 		// optional hit logging
@@ -1872,6 +1881,35 @@ class Spam_BLIP_class {
 
 		return $ret;
 	}
+
+	// maintain table: trim according to TTL and max rows options
+	protected function tbl_maintain() {
+		$tm = self::best_time();
+		global $wpdb;
+		//$wpdb->show_errors();
+		$c = self::get_ttldata_option();
+		// 0 (or less) disables
+		if ( (int)$c >= 1 ) {
+			$c = (int)time() - (int)$c;
+			if ( $c > 0 ) {
+				$r = $this->store_remove_older_than($c);
+				if ( $r === false ) $f = 'false';
+				self::errlog('GOT from store_remove_older_than: ' . $r);
+			}
+		}
+
+		$c = self::get_maxdata_option();
+		// 0 (or less) disables
+		if ( (int)$c >= 1 ) {
+			$r = $this->store_remove_above_max($c);
+			if ( $r === false ) $f = 'false';
+			self::errlog('GOT from store_remove_above_max: ' . $r);
+		}
+		//$wpdb->hide_errors();
+		$tm = self::best_time() - $tm;
+		self::errlog('table maintenance in ' . $tm . ' seconds');
+	}
+
 
 	// if option to whitelist TOR is set and address is *found*
 	// to be a TOR exit node (there are false negatives), then
@@ -1954,6 +1992,43 @@ class Spam_BLIP_class {
 		}
 		
 		return $this->data_table;
+	}
+	
+	// lock table for some ops, in case concurrent page requests
+	// cause intermixed calls to these routines from different sessions
+	// *DO* unlock when done: MySQL docs say the lock will prevent
+	// access to *other* tables, which would prevent WP in any
+	// subsequent DB ops.
+	// UPDATE: we possibly lack privilege for "LOCK TABLES",
+	// so use this advisory form; unlocking is less critical,
+	// but of course still should not be forgotten
+	protected function store_lock_table($type = 'WRITE') {
+		global $wpdb;
+		$tbl = $this->store_tablename();
+		$lck = 'lck_' . $tbl;
+		$r = $wpdb->get_results(
+			"SELECT GET_LOCK('{$lck}',10);", ARRAY_N
+		);
+		if ( is_array($r) && is_array($r[0]) ) {
+			return (int)$r[0][0];
+		}
+		self::errlog("FAILED SELECT GET_LOCK('{$lck}',10);");
+		return false;
+	}
+	
+	// unlock locked table: DO NOT FORGET
+	protected function store_unlock_table($type = 'WRITE') {
+		global $wpdb;
+		$tbl = $this->store_tablename();
+		$lck = 'lck_' . $tbl;
+		$r = $wpdb->get_results(
+			"SELECT RELEASE_LOCK('{$lck}');", ARRAY_N
+		);
+		if ( is_array($r) && is_array($r[0]) ) {
+			return (int)$r[0][0];
+		}
+		self::errlog("FAILED SELECT RELEASE_LOCK('{$lck}');");
+		return false;
 	}
 	
 	// create the data store table
@@ -2068,6 +2143,89 @@ EOQ;
 		return false;
 	}
 
+	// remove where seenlast is < $ts
+	protected function store_remove_older_than($ts) {
+		if ( ! get_option(self::data_vs_opt) ) {
+			return false;
+		}
+
+		global $wpdb;
+		$tbl = $this->store_tablename();
+		
+		$ts = sprintf('%u', 0 + $ts);
+
+		$this->store_lock_table();
+		$wpdb->get_results(
+			"DELETE IGNORE FROM {$tbl} WHERE seenlast < {$ts};",
+			ARRAY_N
+		);
+		$r = $wpdb->get_results(
+			"SELECT ROW_COUNT();",
+			ARRAY_N
+		);
+		$this->store_unlock_table();
+
+		if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
+			return $r[0][0];
+		}
+		
+		return false;
+	}
+
+	// remove remove older rows so that row count == $max
+	protected function store_remove_above_max($mx) {
+		$ret = false;
+		
+		if ( ! get_option(self::data_vs_opt) ) {
+			return $ret;
+		}
+
+		// these several ops should lock out other sessions
+		$this->store_lock_table();
+
+		// 'row_count'
+		$c = $this->store_get_rowcount();
+
+		do {
+			if ( $c === false ) {
+				// break rather than return, to get the unlock
+				break;
+			}
+			
+			if ( (int)$c <= (int)$mx ) {
+				// break rather than return, to get the unlock
+				$ret = 0;
+				break;
+			}
+			
+			global $wpdb;
+			$tbl = $this->store_tablename();
+			
+			// make difference; number to remove
+			$c = sprintf('%u', (int)$c - (int)$mx);
+	
+			// MySQL docs claim LIMIT is MySQL specific;
+			// if WP ever supports other DB this will have to
+			// be redone
+			$wpdb->get_results(
+				"DELETE FROM {$tbl} ORDER BY seenlast LIMIT {$c};",
+				ARRAY_N
+			);
+			$r = $wpdb->get_results(
+				"SELECT ROW_COUNT();",
+				ARRAY_N
+			);
+	
+			if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
+				$ret = (int)$r[0][0];
+			}
+		} while ( false );
+
+		$this->store_unlock_table();
+		
+		return $ret;
+	}
+
 	// delete record from address -- uses method
 	// added in WP 3.4.0
 	protected function store_remove_address($addr) {
@@ -2078,10 +2236,12 @@ EOQ;
 
 		global $wpdb;
 		$tbl = $this->store_tablename();
+		$r = false;
 
+		$this->store_lock_table();
 		if ( ! method_exists($wpdb, 'delete') ) {
 			// w/o delete method use query
-			return $wpdb->query(
+			$r = $wpdb->query(
 				$wpdb->prepare(
 					"
 					DELETE * FROM {$tbl}
@@ -2090,18 +2250,21 @@ EOQ;
 					$addr
 				)
 			);
+		} else {
+			$wh = array('address' => $addr);
+			$r = $wpdb->delete($tbl, $wh, array('%s'));
 		}
+		$this->store_unlock_table();
 
-		$wh = array('address' => $addr);
-		$r = $wpdb->delete($tbl, $wh, array('%s'));
 		return $r;
 	}
 
 	// insert record from an associative array
 	// $check1st may be false if caller is certain
 	// the existence of the record need not be checked
+	// NOTE: does *not* lock!
 	protected function store_insert_array($a, $check1st = true) {
-		// possibly redundant, but check for record first
+		// optional check for record first
 		if ( $check1st !== false ) {
 			$r = $this->store_get_address($a['address']);
 			if ( is_array($r) ) {
@@ -2122,12 +2285,16 @@ EOQ;
 	// update record from an associative array
 	// will insert record that doesn't exist if $insert is true
 	protected function store_update_array($a, $insert = true) {
-		// possibly redundant, but check for record first
+		$this->store_lock_table();
+		// insert if record dies not exist
 		$r = $this->store_get_address($a['address']);
 		if ( ! is_array($r) ) {
 			if ( $insert === true ) {
-				return $this->store_insert_array($a, false);
+				$r = $this->store_insert_array($a, false);
+				$this->store_unlock_table();
+				return $r;
 			}
+			$this->store_unlock_table();
 			return false;
 		}
 
@@ -2155,6 +2322,7 @@ EOQ;
 			array('%s')
 		);
 
+		$this->store_unlock_table();
 		return $r;
 	}
 	
