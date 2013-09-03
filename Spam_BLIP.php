@@ -2143,6 +2143,32 @@ EOQ;
 		return false;
 	}
 
+	// general col count
+	protected function store_count_by_col($col, $group = null, $where = null) {
+		if ( ! get_option(self::data_vs_opt) ) {
+			return false;
+		}
+
+		global $wpdb;
+		$tbl = $this->store_tablename();
+		
+		$q = sprintf("SELECT %s, COUNT(*) FROM %s ", $col, $tbl);
+		if ( $where !== null ) {
+			$q .= 'WHERE ' . $where . ' ';
+		}
+		if ( $group !== null ) {
+			$q .= 'GROUP BY ' . $group;
+		}
+
+		$r = $wpdb->get_results($q, ARRAY_N);
+
+		if ( is_array($r) ) {
+			return $r;
+		}
+		
+		return false;
+	}
+
 	// remove where seenlast is < $ts
 	protected function store_remove_older_than($ts) {
 		if ( ! get_option(self::data_vs_opt) ) {
@@ -2172,7 +2198,7 @@ EOQ;
 		return false;
 	}
 
-	// remove remove older rows so that row count == $max
+	// remove older rows so that row count == $max
 	protected function store_remove_above_max($mx) {
 		$ret = false;
 		
@@ -2192,7 +2218,7 @@ EOQ;
 				break;
 			}
 			
-			if ( (int)$c <= (int)$mx ) {
+			if ( (int)$c <= ((int)$mx+self::store_get_max_pad($mx)) ) {
 				// break rather than return, to get the unlock
 				$ret = 0;
 				break;
@@ -2224,6 +2250,22 @@ EOQ;
 		$this->store_unlock_table();
 		
 		return $ret;
+	}
+
+	// return a pad value for the maximum data store row count option
+	// to avoid the condition at max that each new insert triggers
+	// another deletion, which is wasteful; the way of figuring the
+	// value will always be subject to tuning, and might eventually
+	// be made an option
+	// pass the actual max option in $mx
+	public static function store_get_max_pad($mx) {
+		if ( (int)$mx < 50 ) {
+			return 5;
+		}
+		if ( (int)$mx < 1000 ) {
+			return (int)$mx / 10;
+		}
+		return 100;
 	}
 
 	// delete record from address -- uses method
@@ -2357,6 +2399,8 @@ EOQ;
 			'k' => array()
 		);
 		
+		//global $wpdb;
+		//$wpdb->show_errors();
 		// 'row_count'
 		$c = $this->store_get_rowcount();
 		if ( $c === false ) {
@@ -2366,6 +2410,42 @@ EOQ;
 		$r['k'][] = 'row_count';
 		$r['row_count'] = $c;
 		
+		// more
+		$tm = (int)time();
+		$t1 = $tm - (3600);
+		$w = '' . $t1;
+		$t = 'seenlast';
+		$a = $this->store_count_by_col($t, null,
+			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')");
+		if ( $a !== false && is_array($a[0]) ) {
+			$r['k'][] = 'hour';
+			$r['hour'] = $a[0][1];
+		}
+		$t1 = $tm - (3600 * 24);
+		$w = '' . $t1;
+		$t = 'seenlast';
+		$a = $this->store_count_by_col($t, null,
+			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')");
+		if ( $a !== false && is_array($a[0]) ) {
+			$r['k'][] = 'day';
+			$r['day'] = $a[0][1];
+		}
+		$t1 = $tm - (3600 * 24 * 7);
+		$w = '' . $t1;
+		$t = 'seenlast';
+		$a = $this->store_count_by_col($t, null,
+			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')");
+		if ( $a !== false && is_array($a[0]) ) {
+			$r['k'][] = 'week';
+			$r['week'] = $a[0][1];
+		}
+		$w = 'other2';
+		$t = 'lasttype';
+		$a = $this->store_count_by_col($t, null, "{$t} = '{$w}'");
+		if ( $a !== false && is_array($a[0]) ) {
+			$r['k'][] = 'tor';
+			$r['tor'] = $a[0][1];
+		}
 		// TODO: more
 		
 		return $r;
@@ -2476,6 +2556,35 @@ class Spam_BLIP_widget_class extends WP_Widget {
 							   '%d addresses listed',
 							   $v, 'spambl_l10n')), $v)
 						);
+						break;
+					case 'tor':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d tor exit node',
+							   '%d tor exit nodes',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'hour':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d hit in the past hour',
+							   '%d hits in the past hour',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'day':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d hit in the past day',
+							   '%d hits in the past day',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'week':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d hit in the past week',
+							   '%d hits in the past week',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
 					default:
 						break;
 				}
