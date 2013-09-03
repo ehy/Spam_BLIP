@@ -2143,8 +2143,8 @@ EOQ;
 		return false;
 	}
 
-	// general col count
-	protected function store_count_by_col($col, $group = null, $where = null) {
+	// general function of select
+	protected function store_FUNC_by_col($col, $f, $where = null, $group = null) {
 		if ( ! get_option(self::data_vs_opt) ) {
 			return false;
 		}
@@ -2152,7 +2152,7 @@ EOQ;
 		global $wpdb;
 		$tbl = $this->store_tablename();
 		
-		$q = sprintf("SELECT %s, COUNT(*) FROM %s ", $col, $tbl);
+		$q = sprintf("SELECT %s, %s FROM %s ", $col, $f, $tbl);
 		if ( $where !== null ) {
 			$q .= 'WHERE ' . $where . ' ';
 		}
@@ -2167,6 +2167,11 @@ EOQ;
 		}
 		
 		return false;
+	}
+
+	// general col count
+	protected function store_count_by_col($col, $where = null, $group = null) {
+		return $this->store_FUNC_by_col($col, 'COUNT(*)', $where, $group);
 	}
 
 	// remove where seenlast is < $ts
@@ -2411,43 +2416,73 @@ EOQ;
 		$r['row_count'] = $c;
 		
 		// more
-		$tm = (int)time();
+		$tf = self::best_time();
+		$tm = (int)$tf;
 		$t1 = $tm - (3600);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->store_count_by_col($t, null,
-			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')");
+		$a = $this->store_count_by_col($t,
+			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
+			null);
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hour';
 			$r['hour'] = $a[0][1];
 		}
+		$t = 'hitcount';
+		$a = $this->store_FUNC_by_col($t, "SUM({$t})",
+			"seenlast > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
+			null);
+		if ( $a !== false && is_array($a[0]) ) {
+			$r['k'][] = 'hhour';
+			$r['hhour'] = $a[0][1];
+		}
 		$t1 = $tm - (3600 * 24);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->store_count_by_col($t, null,
-			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')");
+		$a = $this->store_count_by_col($t,
+			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
+			null);
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'day';
 			$r['day'] = $a[0][1];
 		}
+		$t = 'hitcount';
+		$a = $this->store_FUNC_by_col($t, "SUM({$t})",
+			"seenlast > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
+			null);
+		if ( $a !== false && is_array($a[0]) ) {
+			$r['k'][] = 'hday';
+			$r['hday'] = $a[0][1];
+		}
 		$t1 = $tm - (3600 * 24 * 7);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->store_count_by_col($t, null,
-			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')");
+		$a = $this->store_count_by_col($t,
+			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
+			null);
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'week';
 			$r['week'] = $a[0][1];
 		}
+		$t = 'hitcount';
+		$a = $this->store_FUNC_by_col($t, "SUM({$t})",
+			"seenlast > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
+			null);
+		if ( $a !== false && is_array($a[0]) ) {
+			$r['k'][] = 'hweek';
+			$r['hweek'] = $a[0][1];
+		}
 		$w = 'other2';
 		$t = 'lasttype';
-		$a = $this->store_count_by_col($t, null, "{$t} = '{$w}'");
+		$a = $this->store_count_by_col($t, "{$t} = '{$w}'", null);
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'tor';
 			$r['tor'] = $a[0][1];
 		}
 		// TODO: more
 		
+		$tf = self::best_time() - $tf;
+		self::errlog('data store info gathered in ' . $tf . ' seconds');
 		return $r;
 	}
 } // End class Spam_BLIP_class
@@ -2500,7 +2535,10 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 		$bc  = $this->plinst->get_comments_open_option();
 		$bp  = $this->plinst->get_pings_open_option();
-		$inf = $this->plinst->get_store_info();
+		$inf = false;
+		if ( $bc != 'false' || $bp != 'false' ) {
+			$inf = $this->plinst->get_store_info();
+		}
 		
 		// note *no default* for title; allow empty title so that
 		// user may place this below another widget with
@@ -2527,17 +2565,22 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$htype = 'h6';        // depends on css of theme; who knows?
 
 		if ( $bc != 'false' || $bp != 'false' ) {
-			printf("\n\t<{$htype}>%s</{$htype}><ul>",
-				$wt(__('Checking Addresses for:', 'spambl_l10n'))
-			);
+			$tw  = $this->plinst->get_torwhite_option();
+
+			echo "\n\t<ul>";
 			if ( $bc != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
-					$wt(__('comments', 'spambl_l10n'))
+					$wt(__('Checking for comment spam', 'spambl_l10n'))
 				);
 			}
 			if ( $bp != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
-					$wt(__('pings', 'spambl_l10n'))
+					$wt(__('Checking for ping spam', 'spambl_l10n'))
+				);
+			}
+			if ( $tw != 'false' ) {
+				printf("\n\t\t<li>%s</li>",
+					$wt(__('Whitelisting TOR exits', 'spambl_l10n'))
 				);
 			}
 			echo "\n\t</ul>\n";
@@ -2566,6 +2609,13 @@ class Spam_BLIP_widget_class extends WP_Widget {
 						break;
 					case 'hour':
 						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d address in the past hour',
+							   '%d addresses in the past hour',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'hhour':
+						printf("\n\t\t<li>%s</li>",
 							sprintf($wt(_n('%d hit in the past hour',
 							   '%d hits in the past hour',
 							   $v, 'spambl_l10n')), $v)
@@ -2573,12 +2623,26 @@ class Spam_BLIP_widget_class extends WP_Widget {
 						break;
 					case 'day':
 						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d address in the past day',
+							   '%d addresses in the past day',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'hday':
+						printf("\n\t\t<li>%s</li>",
 							sprintf($wt(_n('%d hit in the past day',
 							   '%d hits in the past day',
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
 					case 'week':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d address in the past week',
+							   '%d addresses in the past week',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'hweek':
 						printf("\n\t\t<li>%s</li>",
 							sprintf($wt(_n('%d hit in the past week',
 							   '%d hits in the past week',
