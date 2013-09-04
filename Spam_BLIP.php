@@ -113,6 +113,9 @@ endif;
  */
 if ( ! class_exists('Spam_BLIP_class') ) :
 class Spam_BLIP_class {
+	// for debugging: set false for release
+	const DBG = true;
+	
 	// the widget class name
 	const Spam_BLIP_plugin_widget = 'Spam_BLIP_widget_class';
 	
@@ -580,7 +583,7 @@ class Spam_BLIP_class {
 		if ( $opts && $opts[self::optdelstor] != 'false' ) {
 			$pg = self::get_instance();
 			// bye data
-			$pg->store_delete_table();
+			$pg->db_delete_table();
 			delete_option(self::data_vs_opt);
 		}
 
@@ -659,7 +662,7 @@ class Spam_BLIP_class {
 		// this will create/update table as nec. if user set
 		// the option (which defaults to false)
 		if ( self::get_recdata_option() != 'false' ) {
-			$this->store_create_table();
+			$this->db_create_table();
 		}
 		} else { // if ( $adm )
 
@@ -716,11 +719,6 @@ class Spam_BLIP_class {
 				load_plugin_textdomain($dom, false, $t);
 		}
 	}
-
-	/**
-	 * Settings page callback functions:
-	 * validators, sections, fields, and page
-	 */
 
 	/**
 	 * Utility and misc. helper procs
@@ -871,6 +869,13 @@ class Spam_BLIP_class {
 		error_log($e, 0);
 	}
 	
+	// debug messages for development: tests class const 'DBG'
+	public static function dbglog($err) {
+		if ( self::DBG ) {
+			self::errlog('DBG: ' . $err);
+		}
+	}
+	
 	// helper to make self
 	public static function instantiate($init = true) {
 		if ( ! self::$instance ) {
@@ -898,26 +903,17 @@ class Spam_BLIP_class {
 	// get microtime() if possible, else just time()
 	public static function best_time() {
 		if ( function_exists('microtime') ) {
-			return microtime(true); // PHP 4 better be dead
+			// PHP 4 better be dead
+			// PHP 5: arg true gets a float return
+			return microtime(true);
 		}
-		return time();
+		return (int)time();
 	}
 
-	// optional additional response to unexpectd REMOTE_ADDR;
+	// optional additional response to unexpected REMOTE_ADDR;
 	// after errlog()
 	protected function handle_REMOTE_ADDR_error($msg) {
 		// TODO: make option; send email
-	}
-	/**
-	 * encode a path for a URL, e.g. from parse_url['path']
-	 * leaving '/' un-encoded
-	 * $func might also be urlencode(), or user defined
-	 * inheritable
-	 */
-	public static function upathencode($p, $func = 'rawurlencode') {
-		return implode('/',
-			array_map($func,
-				explode('/', $p) ) );
 	}
 
 	/**
@@ -1138,7 +1134,7 @@ class Spam_BLIP_class {
 		$t = self::wt(__('Enable/disable data store:', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
-		$cnt = $this->store_get_rowcount();
+		$cnt = $this->db_get_rowcount();
 		if ( $cnt ) {
 			$t = self::wt(
 				_n('(There is %d record in the data store)',
@@ -1766,7 +1762,7 @@ class Spam_BLIP_class {
 
 		// TODO: record stats
 		if ( self::get_usedata_option() != 'false' ) {
-			$d = $this->store_get_address($addr);
+			$d = $this->db_get_address($addr);
 			$posttime = self::best_time();
 
 			if ( is_array($d) ) {
@@ -1800,8 +1796,8 @@ class Spam_BLIP_class {
 
 				// optionally record stats
 				if ( self::get_recdata_option() != 'false' ) {
-					$this->store_update_array(
-						$this->store_make_array(
+					$this->db_update_array(
+						$this->db_make_array(
 							$addr, 1, (int)$pretime, $statype
 						)
 					);
@@ -1832,8 +1828,8 @@ class Spam_BLIP_class {
 		
 		// optionally record stats
 		if ( self::get_recdata_option() != 'false' ) {
-			$this->store_update_array(
-				$this->store_make_array(
+			$this->db_update_array(
+				$this->db_make_array(
 					$addr, 1, (int)$pretime, $statype
 				)
 			);
@@ -1892,22 +1888,22 @@ class Spam_BLIP_class {
 		if ( (int)$c >= 1 ) {
 			$c = (int)time() - (int)$c;
 			if ( $c > 0 ) {
-				$r = $this->store_remove_older_than($c);
+				$r = $this->db_remove_older_than($c);
 				if ( $r === false ) $f = 'false';
-				self::errlog('GOT from store_remove_older_than: ' . $r);
+				self::dbglog('GOT from db_remove_older_than: ' . $r);
 			}
 		}
 
 		$c = self::get_maxdata_option();
 		// 0 (or less) disables
 		if ( (int)$c >= 1 ) {
-			$r = $this->store_remove_above_max($c);
+			$r = $this->db_remove_above_max($c);
 			if ( $r === false ) $f = 'false';
-			self::errlog('GOT from store_remove_above_max: ' . $r);
+			self::dbglog('GOT from db_remove_above_max: ' . $r);
 		}
 		//$wpdb->hide_errors();
 		$tm = self::best_time() - $tm;
-		self::errlog('table maintenance in ' . $tm . ' seconds');
+		self::dbglog('table maintenance in ' . $tm . ' seconds');
 	}
 
 
@@ -1921,12 +1917,15 @@ class Spam_BLIP_class {
 		}
 
 		if ( self::get_usedata_option() != 'false' ) {
-			$d = $this->store_get_address($addr);
+			$d = $this->db_get_address($addr);
 			// use 'other2' for tor exit node
 			if ( is_array($d) && $d['lasttype'] === 'other2' ) {
-				// TRANSLATORS: %s is IP4 address; DATA is the
-				// ddata store (db) used by this plugin
-				$m = __('Found "%s" to be a tor exit, in data -- passed per option', 'spambl_l10n');
+				if ( self::get_hitlog_option() != 'false' ) {
+					// TRANSLATORS: %s is IP4 address; DATA is the
+					// ddata store (db) used by this plugin
+					$m = __('Found "%s" to be a tor exit, in data -- passed per option', 'spambl_l10n');
+					self::errlog(sprintf($m, $addr));
+				}
 				// mark for this invocation
 				$this->rbl_result = array(false);
 				return true;
@@ -1947,15 +1946,17 @@ class Spam_BLIP_class {
 			}
 		}
 		if ( $s && ChkBL_0_0_1::chk_tor_exit($addr, $s) ) {
-			// TRANSLATORS: %s is IP4 address; DNS is the
-			// domain name system
-			$m = __('Found "%s" to be a tor exit, by DNS -- passed per option', 'spambl_l10n');
-			self::errlog(sprintf($m, $addr));
+			if ( self::get_hitlog_option() != 'false' ) {
+				// TRANSLATORS: %s is IP4 address; DNS is the
+				// domain name system
+				$m = __('Found "%s" to be a tor exit, by DNS -- passed per option', 'spambl_l10n');
+				self::errlog(sprintf($m, $addr));
+			}
 			// optionally record stats
 			if ( self::get_recdata_option() != 'false' ) {
 				// use 'other2' for tor exit node
-				$this->store_update_array(
-					$this->store_make_array(
+				$this->db_update_array(
+					$this->db_make_array(
 						$addr, 1, (int)self::best_time(), 'other2'
 					)
 				);
@@ -1983,7 +1984,7 @@ class Spam_BLIP_class {
 	 */
 	 
 	// get db table name
-	protected function store_tablename() {
+	protected function db_tablename() {
 		global $wpdb;
 		
 		// const data_suffix
@@ -2002,9 +2003,9 @@ class Spam_BLIP_class {
 	// UPDATE: we possibly lack privilege for "LOCK TABLES",
 	// so use this advisory form; unlocking is less critical,
 	// but of course still should not be forgotten
-	protected function store_lock_table($type = 'WRITE') {
+	protected function db_lock_table($type = 'WRITE') {
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 		$lck = 'lck_' . $tbl;
 		$r = $wpdb->get_results(
 			"SELECT GET_LOCK('{$lck}',10);", ARRAY_N
@@ -2017,9 +2018,9 @@ class Spam_BLIP_class {
 	}
 	
 	// unlock locked table: DO NOT FORGET
-	protected function store_unlock_table($type = 'WRITE') {
+	protected function db_unlock_table($type = 'WRITE') {
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 		$lck = 'lck_' . $tbl;
 		$r = $wpdb->get_results(
 			"SELECT RELEASE_LOCK('{$lck}');", ARRAY_N
@@ -2032,16 +2033,16 @@ class Spam_BLIP_class {
 	}
 	
 	// create the data store table
-	protected function store_delete_table() {
+	protected function db_delete_table() {
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 		// 'IF EXISTS' should suppress error if never created
 		return $wpdb->query("DROP TABLE IF EXISTS {$tbl}");
 	}
 	
 	// create the data store table; use dbDelta, see:
 	// https://codex.wordpress.org/Creating_Tables_with_Plugins
-	protected function store_create_table() {
+	protected function db_create_table() {
 		$o = get_option(self::data_vs_opt);
 		$v = 0;
 
@@ -2063,7 +2064,7 @@ class Spam_BLIP_class {
 			update_option(self::data_vs_opt, ''.self::data_vs);
 		}
 		
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 
 // Nice indenting must be suspended now
 // want a table like so:
@@ -2094,28 +2095,28 @@ EOQ;
 		return true;
 	}
 	
-	// cache var for the following store_get_address method
-	private $store_get_addr_cache = null;
+	// cache var for the following db_get_address method
+	private $db_get_addr_cache = null;
 
 	// get record for an IP address; returns null
 	// (as $wpdb->get_row() is documented to do),
 	// or associative array
-	protected function store_get_address($addr) {
-		if ( $this->store_get_addr_cache !== null
-			&& $this->store_get_addr_cache[0] === $addr ) {
-			return $this->store_get_addr_cache[1];
+	protected function db_get_address($addr) {
+		if ( $this->db_get_addr_cache !== null
+			&& $this->db_get_addr_cache[0] === $addr ) {
+			return $this->db_get_addr_cache[1];
 		}
 
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 		
 		$q = "SELECT * FROM {$tbl} WHERE address = '{$addr}'";
 		$r = $wpdb->get_row($q, ARRAY_A);
 
 		if ( is_array($r) ) {
-			$this->store_get_addr_cache = array($addr, $r);
+			$this->db_get_addr_cache = array($addr, $r);
 		} else {
-			$this->store_get_addr_cache = null;
+			$this->db_get_addr_cache = null;
 		}
 
 		return $r;
@@ -2124,13 +2125,13 @@ EOQ;
 	// get number of records -- checks the store version options
 	// first for whether the table should exist -- returns
 	// false if the option does not exist
-	protected function store_get_rowcount() {
+	protected function db_get_rowcount() {
 		if ( ! get_option(self::data_vs_opt) ) {
 			return false;
 		}
 
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 
 		$r = $wpdb->get_results(
 			"SELECT COUNT(*) FROM {$tbl}", ARRAY_N
@@ -2144,13 +2145,13 @@ EOQ;
 	}
 
 	// general function of select
-	protected function store_FUNC_by_col($col, $f, $where = null, $group = null) {
+	protected function db_FUNC_by_col($col, $f, $where = null, $group = null) {
 		if ( ! get_option(self::data_vs_opt) ) {
 			return false;
 		}
 
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 		
 		$q = sprintf("SELECT %s, %s FROM %s ", $col, $f, $tbl);
 		if ( $where !== null ) {
@@ -2170,22 +2171,22 @@ EOQ;
 	}
 
 	// general col count
-	protected function store_count_by_col($col, $where = null, $group = null) {
-		return $this->store_FUNC_by_col($col, 'COUNT(*)', $where, $group);
+	protected function db_count_by_col($col, $where = null, $group = null) {
+		return $this->db_FUNC_by_col($col, 'COUNT(*)', $where, $group);
 	}
 
 	// remove where seenlast is < $ts
-	protected function store_remove_older_than($ts) {
+	protected function db_remove_older_than($ts) {
 		if ( ! get_option(self::data_vs_opt) ) {
 			return false;
 		}
 
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 		
 		$ts = sprintf('%u', 0 + $ts);
 
-		$this->store_lock_table();
+		$this->db_lock_table();
 		$wpdb->get_results(
 			"DELETE IGNORE FROM {$tbl} WHERE seenlast < {$ts};",
 			ARRAY_N
@@ -2194,7 +2195,7 @@ EOQ;
 			"SELECT ROW_COUNT();",
 			ARRAY_N
 		);
-		$this->store_unlock_table();
+		$this->db_unlock_table();
 
 		if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
 			return $r[0][0];
@@ -2204,7 +2205,7 @@ EOQ;
 	}
 
 	// remove older rows so that row count == $max
-	protected function store_remove_above_max($mx) {
+	protected function db_remove_above_max($mx) {
 		$ret = false;
 		
 		if ( ! get_option(self::data_vs_opt) ) {
@@ -2212,10 +2213,10 @@ EOQ;
 		}
 
 		// these several ops should lock out other sessions
-		$this->store_lock_table();
+		$this->db_lock_table();
 
 		// 'row_count'
-		$c = $this->store_get_rowcount();
+		$c = $this->db_get_rowcount();
 
 		do {
 			if ( $c === false ) {
@@ -2223,14 +2224,14 @@ EOQ;
 				break;
 			}
 			
-			if ( (int)$c <= ((int)$mx+self::store_get_max_pad($mx)) ) {
+			if ( (int)$c <= ((int)$mx+self::db_get_max_pad($mx)) ) {
 				// break rather than return, to get the unlock
 				$ret = 0;
 				break;
 			}
 			
 			global $wpdb;
-			$tbl = $this->store_tablename();
+			$tbl = $this->db_tablename();
 			
 			// make difference; number to remove
 			$c = sprintf('%u', (int)$c - (int)$mx);
@@ -2252,7 +2253,7 @@ EOQ;
 			}
 		} while ( false );
 
-		$this->store_unlock_table();
+		$this->db_unlock_table();
 		
 		return $ret;
 	}
@@ -2263,7 +2264,7 @@ EOQ;
 	// value will always be subject to tuning, and might eventually
 	// be made an option
 	// pass the actual max option in $mx
-	public static function store_get_max_pad($mx) {
+	public static function db_get_max_pad($mx) {
 		if ( (int)$mx < 50 ) {
 			return 5;
 		}
@@ -2275,17 +2276,17 @@ EOQ;
 
 	// delete record from address -- uses method
 	// added in WP 3.4.0
-	protected function store_remove_address($addr) {
-		if ( $this->store_get_addr_cache !== null
-			&& $this->store_get_addr_cache[0] === $addr ) {
-			$this->store_get_addr_cache = null;
+	protected function db_remove_address($addr) {
+		if ( $this->db_get_addr_cache !== null
+			&& $this->db_get_addr_cache[0] === $addr ) {
+			$this->db_get_addr_cache = null;
 		}
 
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 		$r = false;
 
-		$this->store_lock_table();
+		$this->db_lock_table();
 		if ( ! method_exists($wpdb, 'delete') ) {
 			// w/o delete method use query
 			$r = $wpdb->query(
@@ -2301,7 +2302,7 @@ EOQ;
 			$wh = array('address' => $addr);
 			$r = $wpdb->delete($tbl, $wh, array('%s'));
 		}
-		$this->store_unlock_table();
+		$this->db_unlock_table();
 
 		return $r;
 	}
@@ -2310,17 +2311,17 @@ EOQ;
 	// $check1st may be false if caller is certain
 	// the existence of the record need not be checked
 	// NOTE: does *not* lock!
-	protected function store_insert_array($a, $check1st = true) {
+	protected function db_insert_array($a, $check1st = true) {
 		// optional check for record first
 		if ( $check1st !== false ) {
-			$r = $this->store_get_address($a['address']);
+			$r = $this->db_get_address($a['address']);
 			if ( is_array($r) ) {
 				return false;
 			}
 		}
 
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 
 		$r = $wpdb->insert($tbl, $a,
 			array('%s','%d','%d','%d','%s','%d')
@@ -2331,25 +2332,25 @@ EOQ;
 	
 	// update record from an associative array
 	// will insert record that doesn't exist if $insert is true
-	protected function store_update_array($a, $insert = true) {
-		$this->store_lock_table();
+	protected function db_update_array($a, $insert = true) {
+		$this->db_lock_table();
 		// insert if record dies not exist
-		$r = $this->store_get_address($a['address']);
+		$r = $this->db_get_address($a['address']);
 		if ( ! is_array($r) ) {
 			if ( $insert === true ) {
-				$r = $this->store_insert_array($a, false);
-				$this->store_unlock_table();
+				$r = $this->db_insert_array($a, false);
+				$this->db_unlock_table();
 				return $r;
 			}
-			$this->store_unlock_table();
+			$this->db_unlock_table();
 			return false;
 		}
 
 		global $wpdb;
-		$tbl = $this->store_tablename();
+		$tbl = $this->db_tablename();
 
 		// cache holds record that is changed, so clear it
-		$this->store_get_addr_cache = null;
+		$this->db_get_addr_cache = null;
 
 		// update get values in $r with those passsed in $a
 		// leave address and seeninit alone
@@ -2369,12 +2370,12 @@ EOQ;
 			array('%s')
 		);
 
-		$this->store_unlock_table();
+		$this->db_unlock_table();
 		return $r;
 	}
 	
 	// make insert/update array from separate args
-	protected function store_make_array(
+	protected function db_make_array(
 		$addr, $hitincr, $time, $type = 'comments')
 	{
 		// setup the enum field "lasttype"; avoid assumption
@@ -2399,7 +2400,7 @@ EOQ;
 	// public: get some info on the data store; e.g., for
 	// the widget -- return map where ['k'] is an array
 	// of avalable keys, not including 'k'
-	public function get_store_info() {
+	public function get_db_info() {
 		$r = array(
 			'k' => array()
 		);
@@ -2407,7 +2408,7 @@ EOQ;
 		//global $wpdb;
 		//$wpdb->show_errors();
 		// 'row_count'
-		$c = $this->store_get_rowcount();
+		$c = $this->db_get_rowcount();
 		if ( $c === false ) {
 			return false;
 		}
@@ -2421,17 +2422,15 @@ EOQ;
 		$t1 = $tm - (3600);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->store_count_by_col($t,
-			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
-			null);
+		$a = $this->db_count_by_col($t,
+			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hour';
 			$r['hour'] = $a[0][1];
 		}
 		$t = 'hitcount';
-		$a = $this->store_FUNC_by_col($t, "SUM({$t})",
-			"seenlast > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
-			null);
+		$a = $this->db_FUNC_by_col($t, "SUM({$t})",
+			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hhour';
 			$r['hhour'] = $a[0][1];
@@ -2439,17 +2438,15 @@ EOQ;
 		$t1 = $tm - (3600 * 24);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->store_count_by_col($t,
-			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
-			null);
+		$a = $this->db_count_by_col($t,
+			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'day';
 			$r['day'] = $a[0][1];
 		}
 		$t = 'hitcount';
-		$a = $this->store_FUNC_by_col($t, "SUM({$t})",
-			"seenlast > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
-			null);
+		$a = $this->db_FUNC_by_col($t, "SUM({$t})",
+			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hday';
 			$r['hday'] = $a[0][1];
@@ -2457,32 +2454,29 @@ EOQ;
 		$t1 = $tm - (3600 * 24 * 7);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->store_count_by_col($t,
-			"{$t} > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
-			null);
+		$a = $this->db_count_by_col($t,
+			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'week';
 			$r['week'] = $a[0][1];
 		}
 		$t = 'hitcount';
-		$a = $this->store_FUNC_by_col($t, "SUM({$t})",
-			"seenlast > '{$w}' AND (lasttype = 'pings' OR lasttype = 'comments')",
-			null);
+		$a = $this->db_FUNC_by_col($t, "SUM({$t})",
+			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hweek';
 			$r['hweek'] = $a[0][1];
 		}
 		$w = 'other2';
 		$t = 'lasttype';
-		$a = $this->store_count_by_col($t, "{$t} = '{$w}'", null);
+		$a = $this->db_count_by_col($t, "{$t} = '{$w}'");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'tor';
 			$r['tor'] = $a[0][1];
 		}
-		// TODO: more
 		
 		$tf = self::best_time() - $tf;
-		self::errlog('data store info gathered in ' . $tf . ' seconds');
+		self::dbglog('data store info gathered in ' . $tf . ' seconds');
 		return $r;
 	}
 } // End class Spam_BLIP_class
@@ -2537,7 +2531,7 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$bp  = $this->plinst->get_pings_open_option();
 		$inf = false;
 		if ( $bc != 'false' || $bp != 'false' ) {
-			$inf = $this->plinst->get_store_info();
+			$inf = $this->plinst->get_db_info();
 		}
 		
 		// note *no default* for title; allow empty title so that
