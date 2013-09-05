@@ -157,7 +157,7 @@ class Spam_BLIP_class {
 	// table name suffix for the plugin data store
 	const data_suffix  = 'Spam_BLIP_plugin1_datastore';
 	// version for store table layout: simple incrementing integer
-	const data_vs      = 2;
+	const data_vs      = 3;
 	// option name for data store version
 	const data_vs_opt  = 'Spam_BLIP_plugin1_data_vers';
 
@@ -661,22 +661,28 @@ class Spam_BLIP_class {
 
 		// this will create/update table as nec. if user set
 		// the option (which defaults to false)
-		if ( self::get_recdata_option() != 'false' ) {
+		if ( self::get_recdata_option() != 'false' ||
+			 self::get_usedata_option() != 'false' ) {
 			$this->db_create_table();
+
+			if ( defined('WP_ALLOW_REPAIR') ) {
+				$scf = array($this, 'filter_tables_to_repair');
+				add_filter('tables_to_repair', $scf, 100);
+			}
 		}
 		} else { // if ( $adm )
 
 		$scf = array($this, 'action_pre_comment_on_post');
-		add_action('pre_comment_on_post', $scf, 1);
+		add_action('pre_comment_on_post', $scf, 100);
 
 		$scf = array($this, 'action_comment_closed');
-		add_action('comment_closed', $scf, 1);
+		add_action('comment_closed', $scf, 100);
 
 		$scf = array($this, 'filter_comments_open');
-		add_filter('comments_open', $scf, 1);
+		add_filter('comments_open', $scf, 100);
 
 		$scf = array($this, 'filter_pings_open');
-		add_filter('pings_open', $scf, 1);
+		add_filter('pings_open', $scf, 100);
 		} // if ( $adm )
 	}
 
@@ -1131,7 +1137,7 @@ class Spam_BLIP_class {
 
 	// callback: store and use data section
 	public function put_datastore_desc() {
-		$t = self::wt(__('Enable/disable data store:', 'spambl_l10n'));
+		$t = self::wt(__('Enable, disable, configure data store:', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$cnt = $this->db_get_rowcount();
@@ -1154,8 +1160,8 @@ class Spam_BLIP_class {
 			stored data to before DNS lookup.
 			</p><p>
 			The "Keep data" option enables recording of <em>hit</em>
-			data such as the connecting IP address, and the DNS
-			blacklist domain that listed the address.
+			data such as the connecting IP address, and the times
+			the address was first seen and last seen.
 			(This data is also used if included widget is
 			enabled.)
 			</p><p>
@@ -1169,7 +1175,7 @@ class Spam_BLIP_class {
 			address might not belong to the spammer, but rather
 			an ISP that was also abused by the spammer, and
 			which must be able to reuse the IP address. DNS
-			blacklist operators often use a low TTL (Time To Live) on
+			blacklist operators often use a low TTL (Time To Live) in
 			the records of most lists for this reason. The default
 			value is one day (86400 seconds). If you do not want
 			any of the presets, the text field accepts a value
@@ -1878,30 +1884,46 @@ class Spam_BLIP_class {
 		return $ret;
 	}
 
+	// add_filter('tables_to_repair', $scf, 1);
+	// Allows adding table name to WP core table repair routing
+	public function filter_tables_to_repair($tbls) {
+		$tbls[] = $this->db_tablename();
+		return $tbls;
+	}
+
 	// maintain table: trim according to TTL and max rows options
 	protected function tbl_maintain() {
 		$tm = self::best_time();
 		global $wpdb;
+		
+		$r1 = $r2 = false;
 		//$wpdb->show_errors();
 		$c = self::get_ttldata_option();
 		// 0 (or less) disables
 		if ( (int)$c >= 1 ) {
 			$c = (int)time() - (int)$c;
 			if ( $c > 0 ) {
-				$r = $this->db_remove_older_than($c);
-				if ( $r === false ) $f = 'false';
-				self::dbglog('GOT from db_remove_older_than: ' . $r);
+				$f = $r1 = $this->db_remove_older_than($c);
+				if ( $f === false ) $f = 'false';
+				self::dbglog('GOT from db_remove_older_than: ' . $f);
 			}
 		}
 
 		$c = self::get_maxdata_option();
 		// 0 (or less) disables
 		if ( (int)$c >= 1 ) {
-			$r = $this->db_remove_above_max($c);
-			if ( $r === false ) $f = 'false';
-			self::dbglog('GOT from db_remove_above_max: ' . $r);
+			$f = $r2 = $this->db_remove_above_max($c);
+			if ( $f === false ) $f = 'false';
+			self::dbglog('GOT from db_remove_above_max: ' . $f);
+		}
+		
+		// if records were removed ...
+		if ( $r1 || $r2 ) {
+			// ... optimize
+			$this->db_optimize();
 		}
 		//$wpdb->hide_errors();
+
 		$tm = self::best_time() - $tm;
 		self::dbglog('table maintenance in ' . $tm . ' seconds');
 	}
@@ -1918,8 +1940,8 @@ class Spam_BLIP_class {
 
 		if ( self::get_usedata_option() != 'false' ) {
 			$d = $this->db_get_address($addr);
-			// use 'other2' for tor exit node
-			if ( is_array($d) && $d['lasttype'] === 'other2' ) {
+			// use 'torx' for tor exit node
+			if ( is_array($d) && $d['lasttype'] === 'torx' ) {
 				if ( self::get_hitlog_option() != 'false' ) {
 					// TRANSLATORS: %s is IP4 address; DATA is the
 					// ddata store (db) used by this plugin
@@ -1954,10 +1976,10 @@ class Spam_BLIP_class {
 			}
 			// optionally record stats
 			if ( self::get_recdata_option() != 'false' ) {
-				// use 'other2' for tor exit node
+				// use 'torx' for tor exit node
 				$this->db_update_array(
 					$this->db_make_array(
-						$addr, 1, (int)self::best_time(), 'other2'
+						$addr, 1, (int)self::best_time(), 'torx'
 					)
 				);
 			}
@@ -2032,11 +2054,60 @@ class Spam_BLIP_class {
 		return false;
 	}
 	
+	// do optimize if free percent too great,
+	// or optional analyze
+	protected function db_optimize($analyze = true) {
+		global $wpdb;
+		$tbl = $this->db_tablename();
+		$db = DB_NAME;
+		$fpct = 0;
+		$len = 0;
+
+		$r = $wpdb->get_results(
+			"SELECT data_length, data_free "
+			. "FROM information_schema.TABLES "
+			. "where TABLE_SCHEMA = '{$db}' "
+				. "AND TABLE_NAME = '{$tbl}';",
+			ARRAY_N
+		);
+
+		if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
+			$len = (int)$r[0][0];
+			$free = (int)$r[0][1];
+			if ( $len > 0 ) {
+				$fpct = ($free * 100) / $len;
+			}
+			self::dbglog(
+				sprintf('OPT: length %d, free %d', $len, $free));
+		}
+		
+		// TODO: make an option
+		$fragmax = 15;
+		// TODO: tune, make user notification or something --
+		// observe time cost of optimization of table sizes so that
+		// this max can be tuned -- the operation is regarded as
+		// expensive, so this value should be the max that can
+		// be considered reasonable for an automatic action --
+		// first guess: 5mb; if records require 25 bytes,
+		// (I have no idea of the db's overhead per record)
+		// simplistic figuring gives 200k records in 5mb;
+		// will this plugin's data ever get there? who knows
+		$lengthmax = 1024 * 1024 * 5;
+
+		if ( $len <= $lengthmax && $fpct > $fragmax ) {
+			$wpdb->query("OPTIMIZE TABLE {$tbl}");
+		} else if ( $analyze ) {
+			$wpdb->query("ANALYZE TABLE {$tbl}");
+		}
+	}
+	
 	// create the data store table
 	protected function db_delete_table() {
 		global $wpdb;
 		$tbl = $this->db_tablename();
 		// 'IF EXISTS' should suppress error if never created
+		// drop table removes associated files and data,
+		// indices and format, too
 		return $wpdb->query("DROP TABLE IF EXISTS {$tbl}");
 	}
 	
@@ -2072,7 +2143,7 @@ class Spam_BLIP_class {
 // hitcount == count of hits
 // seeninit == *epoch* time of 1st recorded hit
 // seenlast == *epoch* time of last recorded hit
-// lasttype == enum('comments', 'pings', 'other1', 'other2', 'other3')
+// lasttype == enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3')
 // varispam == bool set true if lasttype != current type
 // 
 $qs = <<<EOQ
@@ -2081,9 +2152,12 @@ CREATE TABLE $tbl (
   hitcount int(11) UNSIGNED NOT NULL default '0',
   seeninit int(11) UNSIGNED NOT NULL default '0',
   seenlast int(11) UNSIGNED NOT NULL,
-  lasttype enum('comments', 'pings', 'other1', 'other2', 'other3') NOT NULL default 'comments',
+  lasttype enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3') NOT NULL default 'comments',
   varispam tinyint(1) NOT NULL default '0',
-  PRIMARY KEY  (address)
+  PRIMARY KEY  (address),
+  KEY (seenlast),
+  KEY (lasttype),
+  KEY (seenlast, lasttype)
 );
 
 EOQ;
@@ -2126,10 +2200,6 @@ EOQ;
 	// first for whether the table should exist -- returns
 	// false if the option does not exist
 	protected function db_get_rowcount() {
-		if ( ! get_option(self::data_vs_opt) ) {
-			return false;
-		}
-
 		global $wpdb;
 		$tbl = $this->db_tablename();
 
@@ -2145,20 +2215,16 @@ EOQ;
 	}
 
 	// general function of select
-	protected function db_FUNC_by_col($col, $f, $where = null, $group = null) {
-		if ( ! get_option(self::data_vs_opt) ) {
-			return false;
-		}
-
+	protected function db_FUNC($f, $where = null, $group = null) {
 		global $wpdb;
 		$tbl = $this->db_tablename();
 		
-		$q = sprintf("SELECT %s, %s FROM %s ", $col, $f, $tbl);
+		$q = sprintf("SELECT %s FROM %s", $f, $tbl);
 		if ( $where !== null ) {
-			$q .= 'WHERE ' . $where . ' ';
+			$q .= ' WHERE ' . $where;
 		}
 		if ( $group !== null ) {
-			$q .= 'GROUP BY ' . $group;
+			$q .= ' GROUP BY ' . $group;
 		}
 
 		$r = $wpdb->get_results($q, ARRAY_N);
@@ -2170,25 +2236,24 @@ EOQ;
 		return false;
 	}
 
-	// general col count
-	protected function db_count_by_col($col, $where = null, $group = null) {
-		return $this->db_FUNC_by_col($col, 'COUNT(*)', $where, $group);
-	}
-
 	// remove where seenlast is < $ts
 	protected function db_remove_older_than($ts) {
-		if ( ! get_option(self::data_vs_opt) ) {
-			return false;
-		}
-
 		global $wpdb;
 		$tbl = $this->db_tablename();
 		
 		$ts = sprintf('%u', 0 + $ts);
 
 		$this->db_lock_table();
+		// NOTE: address <> '0.0.0.0' was necessary with mysql
+		// commandline client:
+		// "safe update [...] without a WHERE that uses a KEY column";
+		// and at testing address was the only key. Although this
+		// did not prove necessary in WP test installations,
+		// it's added for 'noia's sake, and should not affect
+		// results as address should never be '0.0.0.0'
+		$noid = "address <> '0.0.0.0' AND ";
 		$wpdb->get_results(
-			"DELETE IGNORE FROM {$tbl} WHERE seenlast < {$ts};",
+			"DELETE IGNORE FROM {$tbl} WHERE {$noid}seenlast < {$ts};",
 			ARRAY_N
 		);
 		$r = $wpdb->get_results(
@@ -2208,10 +2273,6 @@ EOQ;
 	protected function db_remove_above_max($mx) {
 		$ret = false;
 		
-		if ( ! get_option(self::data_vs_opt) ) {
-			return $ret;
-		}
-
 		// these several ops should lock out other sessions
 		$this->db_lock_table();
 
@@ -2239,8 +2300,16 @@ EOQ;
 			// MySQL docs claim LIMIT is MySQL specific;
 			// if WP ever supports other DB this will have to
 			// be redone
+			// NOTE: address <> '0.0.0.0' was necessary with mysql
+			// commandline client:
+			// "safe update [...] without a WHERE that uses a KEY column";
+			// and at testing address was the only key. Although this
+			// did not prove necessary in WP test installations,
+			// it's added for 'noia's sake, and should not affect
+			// results as address should never be '0.0.0.0'
+			$noid = "WHERE address <> '0.0.0.0' ";
 			$wpdb->get_results(
-				"DELETE FROM {$tbl} ORDER BY seenlast LIMIT {$c};",
+				"DELETE FROM {$tbl} {$noid}ORDER BY seenlast LIMIT {$c};",
 				ARRAY_N
 			);
 			$r = $wpdb->get_results(
@@ -2356,7 +2425,13 @@ EOQ;
 		// leave address and seeninit alone
 		// compare lasttype, set varispam 1 if lasttype differs
 		if ( $r['lasttype'] !== $a['lasttype'] ) {
-			$r['varispam'] = 1;
+			if ( $r['lasttype'] == 'comments'
+				&& $a['lasttype'] == 'pings') {
+				$r['varispam'] = 1;
+			} else if ( $a['lasttype'] == 'comments'
+				&& $r['lasttype'] == 'pings') {
+				$r['varispam'] = 1;
+			}
 		}
 		// set lasttype, seenlast
 		$r['lasttype'] = $a['lasttype'];
@@ -2381,11 +2456,12 @@ EOQ;
 		// setup the enum field "lasttype"; avoid assumption
 		// that arg and enum keys will match, although
 		// they should -- this can be made helpful or fuzzy, later
-		$t = 'other1';
+		$t = 'x1';
 		if ( $type === 'comments' ) { $t = 'comments'; }
 		if ( $type === 'pings' )    { $t = 'pings'; }
-		if ( $type === 'other2' )   { $t = 'other2'; }
-		if ( $type === 'other3' )   { $t = 'other3'; }
+		if ( $type === 'torx' )   { $t = 'torx'; }
+		if ( $type === 'x2' )   { $t = 'x2'; }
+		if ( $type === 'x3' )   { $t = 'x3'; }
 
 		return array(
 			'address'  => $addr,
@@ -2422,57 +2498,57 @@ EOQ;
 		$t1 = $tm - (3600);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->db_count_by_col($t,
+		$a = $this->db_FUNC('COUNT(*)',
 			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hour';
-			$r['hour'] = $a[0][1];
+			$r['hour'] = $a[0][0];
 		}
 		$t = 'hitcount';
-		$a = $this->db_FUNC_by_col($t, "SUM({$t})",
+		$a = $this->db_FUNC("SUM({$t})",
 			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hhour';
-			$r['hhour'] = $a[0][1];
+			$r['hhour'] = $a[0][0];
 		}
 		$t1 = $tm - (3600 * 24);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->db_count_by_col($t,
+		$a = $this->db_FUNC('COUNT(*)',
 			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'day';
-			$r['day'] = $a[0][1];
+			$r['day'] = $a[0][0];
 		}
 		$t = 'hitcount';
-		$a = $this->db_FUNC_by_col($t, "SUM({$t})",
+		$a = $this->db_FUNC("SUM({$t})",
 			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hday';
-			$r['hday'] = $a[0][1];
+			$r['hday'] = $a[0][0];
 		}
 		$t1 = $tm - (3600 * 24 * 7);
 		$w = '' . $t1;
 		$t = 'seenlast';
-		$a = $this->db_count_by_col($t,
+		$a = $this->db_FUNC('COUNT(*)',
 			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'week';
-			$r['week'] = $a[0][1];
+			$r['week'] = $a[0][0];
 		}
 		$t = 'hitcount';
-		$a = $this->db_FUNC_by_col($t, "SUM({$t})",
+		$a = $this->db_FUNC("SUM({$t})",
 			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'hweek';
-			$r['hweek'] = $a[0][1];
+			$r['hweek'] = $a[0][0];
 		}
-		$w = 'other2';
+		$w = 'torx';
 		$t = 'lasttype';
-		$a = $this->db_count_by_col($t, "{$t} = '{$w}'");
+		$a = $this->db_FUNC('COUNT(*)', "{$t} = '{$w}'");
 		if ( $a !== false && is_array($a[0]) ) {
 			$r['k'][] = 'tor';
-			$r['tor'] = $a[0][1];
+			$r['tor'] = $a[0][0];
 		}
 		
 		$tf = self::best_time() - $tf;

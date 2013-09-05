@@ -2,8 +2,8 @@
 Contributors: EdHynan
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick%DONATE_LINK%hosted_button_id=4Q2Y8ZUG8HXLC
 Tags: %TAGS_README%
-Requires at least: %WP_LEAST%
-Tested up to: %WP_UP_TO%
+Requires at least: 3.0.2
+Tested up to: 3.6
 Stable tag: 1.0.0
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
