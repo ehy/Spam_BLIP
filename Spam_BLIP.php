@@ -1808,7 +1808,7 @@ class Spam_BLIP_class {
 						)
 					);
 					// maintain table
-					$this->tbl_maintain();
+					$this->db_tbl_maintain();
 				}
 				
 				// optionally die
@@ -1840,7 +1840,7 @@ class Spam_BLIP_class {
 				)
 			);
 			// maintain table
-			$this->tbl_maintain();
+			$this->db_tbl_maintain();
 		}
 
 		// optional hit logging
@@ -1889,43 +1889,6 @@ class Spam_BLIP_class {
 	public function filter_tables_to_repair($tbls) {
 		$tbls[] = $this->db_tablename();
 		return $tbls;
-	}
-
-	// maintain table: trim according to TTL and max rows options
-	protected function tbl_maintain() {
-		$tm = self::best_time();
-		global $wpdb;
-		
-		$r1 = $r2 = false;
-		//$wpdb->show_errors();
-		$c = self::get_ttldata_option();
-		// 0 (or less) disables
-		if ( (int)$c >= 1 ) {
-			$c = (int)time() - (int)$c;
-			if ( $c > 0 ) {
-				$f = $r1 = $this->db_remove_older_than($c);
-				if ( $f === false ) $f = 'false';
-				self::dbglog('GOT from db_remove_older_than: ' . $f);
-			}
-		}
-
-		$c = self::get_maxdata_option();
-		// 0 (or less) disables
-		if ( (int)$c >= 1 ) {
-			$f = $r2 = $this->db_remove_above_max($c);
-			if ( $f === false ) $f = 'false';
-			self::dbglog('GOT from db_remove_above_max: ' . $f);
-		}
-		
-		// if records were removed ...
-		if ( $r1 || $r2 ) {
-			// ... optimize
-			$this->db_optimize();
-		}
-		//$wpdb->hide_errors();
-
-		$tm = self::best_time() - $tm;
-		self::dbglog('table maintenance in ' . $tm . ' seconds');
 	}
 
 
@@ -2054,6 +2017,43 @@ class Spam_BLIP_class {
 		return false;
 	}
 	
+	// maintain table: trim according to TTL and max rows options
+	protected function db_tbl_maintain() {
+		$tm = self::best_time();
+		global $wpdb;
+		
+		$r1 = $r2 = false;
+		//$wpdb->show_errors();
+		$c = self::get_ttldata_option();
+		// 0 (or less) disables
+		if ( (int)$c >= 1 ) {
+			$c = (int)time() - (int)$c;
+			if ( $c > 0 ) {
+				$f = $r1 = $this->db_remove_older_than($c);
+				if ( $f === false ) $f = 'false';
+				self::dbglog('GOT from db_remove_older_than: ' . $f);
+			}
+		}
+
+		$c = self::get_maxdata_option();
+		// 0 (or less) disables
+		if ( (int)$c >= 1 ) {
+			$f = $r2 = $this->db_remove_above_max($c);
+			if ( $f === false ) $f = 'false';
+			self::dbglog('GOT from db_remove_above_max: ' . $f);
+		}
+		
+		// if records were removed ...
+		if ( $r1 || $r2 ) {
+			// ... optimize
+			$this->db_optimize();
+		}
+		//$wpdb->hide_errors();
+
+		$tm = self::best_time() - $tm;
+		self::dbglog('table maintenance in ' . $tm . ' seconds');
+	}
+
 	// do optimize if free percent too great,
 	// or optional analyze
 	protected function db_optimize($analyze = true) {
@@ -2088,9 +2088,10 @@ class Spam_BLIP_class {
 		// this max can be tuned -- the operation is regarded as
 		// expensive, so this value should be the max that can
 		// be considered reasonable for an automatic action --
-		// first guess: 5mb; if records require 25 bytes,
-		// (I have no idea of the db's overhead per record)
-		// simplistic figuring gives 200k records in 5mb;
+		// first guess: 5mb; if records require ~ 30 bytes,
+		// (as found with db's overhead on one test system)
+		// simplistic figuring gives ~ 175k records in 5mb;
+		// 175k IP4 addresses listed at blog comment spam RBLs.
 		// will this plugin's data ever get there? who knows
 		$lengthmax = 1024 * 1024 * 5;
 
