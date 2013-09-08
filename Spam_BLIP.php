@@ -133,6 +133,8 @@ class Spam_BLIP_class {
 	const optpingflt = 'pingflt';
 	// pass, or 'whitelist', TOR exit nodes?
 	const opttorpass = 'torpass';
+	// record non-hit DNS lookups?
+	const optnonhrec = 'nonhrec';
 	// keep rbl hit data?
 	const optrecdata = 'recdata';
 	// use rbl hit data?
@@ -169,10 +171,12 @@ class Spam_BLIP_class {
 	const defpingflt = 'true';
 	// pass, or 'whitelist', TOR exit nodes?
 	const deftorpass = 'false';
+	// record non-hit DNS lookups?
+	const defnonhrec = 'false';
 	// keep rbl hit data?
-	const defrecdata = 'false';
+	const defrecdata = 'true';
 	// use rbl hit data?
-	const defusedata = 'false';
+	const defusedata = 'true';
 	// rbl hit data ttl
 	const defttldata = '86400'; // 1 day, seconds
 	// rbl maximum data records
@@ -204,8 +208,15 @@ class Spam_BLIP_class {
 	protected $ipchk_done = false;
 
 	// array of rbl lookup result is put here for reference
-	// across callback methods
+	// across callback methods; or set with result from
+	// data store lookup as array(true||false)
 	protected $rbl_result;
+	// set array(true||false) when a data store lookup has been done
+	// but not rbl
+	protected $dbl_result;
+
+	// if true do data store maintenance in shutdown hook
+	protected $do_db_maintain;
 
 	// Spam_BLIP_plugin program css name
 	protected static $Spam_BLIP_cssname = 'Spam_BLIP.css';
@@ -247,6 +258,8 @@ class Spam_BLIP_class {
 		$this->Spam_BLIP_js = plugins_url($t, $pf);
 		
 		$this->rbl_result = false;
+		$this->dbl_result = false;
+		$this->do_db_maintain = false;
 		$this->ipchk = new IPReservedCheck_0_0_1();
 
 		if ( ($this->full_init = $init) !== true ) {
@@ -290,6 +303,7 @@ class Spam_BLIP_class {
 				self::optcommflt => self::defcommflt,
 				self::optpingflt => self::defpingflt,
 				self::opttorpass => self::deftorpass,
+				self::optnonhrec => self::defnonhrec,
 				self::optrecdata => self::defrecdata,
 				self::optusedata => self::defusedata,
 				self::optplugwdg => self::defplugwdg,
@@ -306,6 +320,7 @@ class Spam_BLIP_class {
 			self::optcommflt => self::defcommflt,
 			self::optpingflt => self::defpingflt,
 			self::opttorpass => self::deftorpass,
+			self::optnonhrec => self::defnonhrec,
 			self::optrecdata => self::defrecdata,
 			self::optusedata => self::defusedata,
 			self::optttldata => self::defttldata,
@@ -389,6 +404,11 @@ class Spam_BLIP_class {
 				self::opttorpass,
 				$items[self::opttorpass],
 				array($this, 'put_torpass_opt'));
+		$fields[$nf++] = new $Cf(self::optnonhrec,
+				self::wt(__('Store (and use) non-hit addresses:', 'spambl_l10n')),
+				self::optnonhrec,
+				$items[self::optnonhrec],
+				array($this, 'put_nonhrec_opt'));
 
 		// section object includes description callback
 		$sections[$ns++] = new $Cs($fields,
@@ -639,51 +659,65 @@ class Spam_BLIP_class {
 		// admin or public invocation?
 		$adm = is_admin();
 
-		$cl = __CLASS__;
+		$cl = __CLASS__; // for static methods
 
 		if ( $adm ) {
-		// keep it clean: {de,}activation
-		if ( current_user_can('activate_plugins') ) {
-		register_deactivation_hook($pf, array($cl, 'on_deactivate'));
-		register_activation_hook($pf,   array($cl,   'on_activate'));
-		}
-		if ( current_user_can('install_plugins') ) {
-		register_uninstall_hook($pf,    array($cl,  'on_uninstall'));
-		}
-
-		add_action('admin_print_scripts',
-			array($cl, 'filter_admin_print_scripts'));
-
-		// Settings/Options page setup
-		if ( current_user_can('manage_options') ) {
-			$this->init_settings_page();
-		}
-
-		// this will create/update table as nec. if user set
-		// the option (which defaults to false)
-		if ( self::get_recdata_option() != 'false' ||
-			 self::get_usedata_option() != 'false' ) {
-			$this->db_create_table();
-
-			if ( defined('WP_ALLOW_REPAIR') ) {
-				$scf = array($this, 'filter_tables_to_repair');
-				add_filter('tables_to_repair', $scf, 100);
+			// keep it clean: {de,}activation
+			if ( current_user_can('activate_plugins') ) {
+				$aa = array($cl, 'on_deactivate');
+				register_deactivation_hook($pf, $aa);
+				$aa = array($cl, 'on_activate');
+				register_activation_hook($pf,   $aa);
 			}
-		}
+			if ( current_user_can('install_plugins') ) {
+				$aa = array($cl, 'on_uninstall');
+				register_uninstall_hook($pf,    $aa);
+			}
+	
+			$aa = array($cl, 'filter_admin_print_scripts');
+			add_action('admin_print_scripts', $aa);
+	
+			// Settings/Options page setup
+			if ( current_user_can('manage_options') ) {
+				$this->init_settings_page();
+			}
+	
+			// this will create/update table as nec. if user set
+			// the option (which defaults to false)
+			if ( self::get_recdata_option() != 'false' ||
+				 self::get_usedata_option() != 'false' ) {
+				$this->db_create_table();
+	
+				if ( defined('WP_ALLOW_REPAIR') ) {
+					$aa = array($this, 'filter_tables_to_repair');
+					add_filter('tables_to_repair', $aa, 100);
+				}
+			}
 		} else { // if ( $adm )
-
-		$scf = array($this, 'action_pre_comment_on_post');
-		add_action('pre_comment_on_post', $scf, 100);
-
-		$scf = array($this, 'action_comment_closed');
-		add_action('comment_closed', $scf, 100);
-
-		$scf = array($this, 'filter_comments_open');
-		add_filter('comments_open', $scf, 100);
-
-		$scf = array($this, 'filter_pings_open');
-		add_filter('pings_open', $scf, 100);
+			$aa = array($this, 'action_pre_comment_on_post');
+			add_action('pre_comment_on_post', $aa, 100);
+	
+			$aa = array($this, 'action_comment_closed');
+			add_action('comment_closed', $aa, 100);
+	
+			$aa = array($this, 'filter_comments_open');
+			add_filter('comments_open', $aa, 100);
+	
+			$aa = array($this, 'filter_pings_open');
+			add_filter('pings_open', $aa, 100);
 		} // if ( $adm )
+
+		// WP does this hook from a php register_shutdown_function()
+		// callback, so it's invoked even after wp_die()
+		$aa = array($this, 'action_shutdown');
+		add_action('shutdown', $aa, 200);
+	}
+
+	// add_filter('tables_to_repair', $scf, 1);
+	// Allows adding table name to WP core table repair routing
+	public function filter_tables_to_repair($tbls) {
+		$tbls[] = $this->db_tablename();
+		return $tbls;
 	}
 
 	public static function load_translations () {
@@ -1031,6 +1065,7 @@ class Spam_BLIP_class {
 				case self::optcommflt:
 				case self::optpingflt:
 				case self::opttorpass:
+				case self::optnonhrec:
 				case self::optrecdata:
 				case self::optusedata:
 				case self::optplugwdg:
@@ -1099,22 +1134,22 @@ class Spam_BLIP_class {
 			selected.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
-		$t = self::wt(__('The "Check blacklist for comments" option 
+		$t = self::wt(__('The "Blacklist check for comments" option 
 			enables the main functionality of the plugin. When
-			<em>WordPress</em> code checks whether comments are open
-			or closed, this plugin will check the connecting IP
-			address against a DNS-based blacklists of weblog
+			<em>WordPress</em> core code checks whether comments
+			are open or closed, this plugin will check the connecting
+			IP address against DNS-based blacklists of weblog
 			comment spammers, and if it is found, will tell
 			<em>WordPress</em> that comments are
 			closed.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
-		$t = self::wt(__('The "Check blacklist for pings" option 
-			is similar to "Check blacklist for comments",
+		$t = self::wt(__('The "Blacklist check for pings" option 
+			is similar to "Blacklist check for comments",
 			but for pings.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
-		$t = self::wt(__('The "Whitelist TOR addresses" option 
+		$t = self::wt(__('The "Whitelist (pass) TOR exit nodes" option 
 			enables a special lookup to try to determine if the
 			connecting address is a TOR exit node (there are some
 			false negatives). If it is found to be one, it is
@@ -1129,6 +1164,21 @@ class Spam_BLIP_class {
 			along with another sort of spam blocker, such as one
 			that analyses comment content, as a second line of
 			defense.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Store (and use) non-hit addresses"
+			option will cause commenter addresses to be stored even
+			if the address was not found in the spammer lists. This
+			will save additional DNS lookups for repeat commenters.
+			This should only be used if there is a perceptible delay
+			caused by the DNS lookups, because an address might
+			turn out to be associated with a spammer and subsequently
+			be added to the online spam blacklists, but this option
+			would allow that address to post comments until its
+			record expired from the plugin data store. Also, an
+			address might be dynamic and therefore an association
+			with a welcome commenter would not be valid.
+			The default is false.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
@@ -1165,7 +1215,7 @@ class Spam_BLIP_class {
 			(This data is also used if included widget is
 			enabled.)
 			</p><p>
-			The "Use data" option enables a check in any available
+			The "Use data" option enables a check in the
 			stored data; if a hit is found there then the
 			DNS lookup is not performed.
 			</p><p>
@@ -1173,10 +1223,10 @@ class Spam_BLIP_class {
 			records in the data store. The records should not be kept
 			permanently, or even for very long, because the IP
 			address might not belong to the spammer, but rather
-			an ISP that was also abused by the spammer, and
-			which must be able to reuse the IP address. DNS
-			blacklist operators often use a low TTL (Time To Live) in
-			the records of most lists for this reason. The default
+			a conscientious ISP (also a victim of abuse by the spammer)
+			that must be able to reuse the IP address. DNS
+			blacklist operators might use a low TTL (Time To Live) in
+			the records of relevant lists for this reason. The default
 			value is one day (86400 seconds). If you do not want
 			any of the presets, the text field accepts a value
 			in seconds, where zero (0) or less will disable the
@@ -1204,15 +1254,15 @@ class Spam_BLIP_class {
 			return;
 		}
 
-		$t = self::wt(__('The "included widget" option selects 
+		$t = self::wt(__('The "Use the included widget" option selects 
 			whether the multi-widget included with the plugin is
-			enabled. The widget will display some of the
-			stored data, if that is enabled. You should consider
+			enabled. The widget will display some counts of the
+			stored data, if the store is enabled. You should consider
 			whether you want that data on public display, but
 			if you find that acceptable, the widget should give
 			a convenient view of the effectiveness of the plugin.
 			</p><p>
-			The "Log bad IP" option selects log messages when
+			The "Log bad IP addresses" option selects log messages when
 			the remote IP address provided in the CGI/1.1
 			environment variable "REMOTE_ADDR" is wrong. Software
 			used in a hosting arrangement can cause this, even
@@ -1223,18 +1273,19 @@ class Spam_BLIP_class {
 			a reserved, loopback, or other special purpose
 			network range. If it is, the DNS blacklist check
 			is not performed, as it would be pointless, and a
-			message is issued to the error log if this option
-			is set.
+			message is issued to the error log.
 			For a site on the "real" Internet, there is probably
-			no reason to turn this logging off. In fact, if
-			such log messages are seen, the hosting administrator
+			no reason to turn this option off. In fact, if
+			these log messages are seen (look for "REMOTE_ADDR"),
+			the hosting administrator
 			or technical contact should be notified (and their response
 			should be that a fix is on the way).
 			This option should be off when developing a site on
 			a private network or single machine, because in this
-			case error log messages are not needed. The plugin
-			will still check the address and skip the blacklist
-			DNS lookup if the address is reserved.
+			case error log messages might be issued for addresses
+			that are valid on the network. With this option off,
+			the plugin will still check the address and skip
+			the blacklist DNS lookup if the address is reserved.
 			</p><p>
 			The "Log blacklisted IP addresses" option selects logging
 			of blacklist hits with the remote IP address. This
@@ -1243,11 +1294,16 @@ class Spam_BLIP_class {
 			enable this temporarily to see the effect the plugin
 			has had.
 			</p><p>
-			The "Bail out on blacklisted" option will have the
-			plugin terminate the blog output (with "wp_die()")
+			The "Bail out on blacklisted IP" option will have the
+			plugin terminate the blog output
 			when the connecting IP address is blacklisted. The
 			default is to only disable comments, and allow the
-			page to be produced normally.
+			page to be produced normally. This option will save
+			some amount of network load (and use that you might
+			pay for), and spammers do not want or need your
+			content anyway, but if there is a rare false positive,
+			the visitor, also a spam victim in this case, will
+			miss your content.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
@@ -1327,6 +1383,13 @@ class Spam_BLIP_class {
 	public function put_torpass_opt($a) {
 		$tt = self::wt(__('Whitelist TOR addresses', 'spambl_l10n'));
 		$k = self::opttorpass;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
+	// store and use non-hit addresses to avoid addl. DNS lookups?
+	public function put_nonhrec_opt($a) {
+		$tt = self::wt(__('Store non-hit addresses for repeats', 'spambl_l10n'));
+		$k = self::optnonhrec;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
@@ -1566,6 +1629,11 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::opttorpass);
 	}
 
+	// for whether to store non-hit lookups
+	public static function get_rec_non_option() {
+		return self::opt_by_name(self::optnonhrec);
+	}
+
 	/**
 	 * core functionality
 	 */
@@ -1613,49 +1681,6 @@ class Spam_BLIP_class {
 		return $ret;
 	}
 
-	// add_action('pre_comment_on_post', $scf, 1);
-	public function action_pre_comment_on_post($comment_post_ID) {
-		// in wp-comments-post.php this action 'pre_comment_on_post'
-		// is invoked from the last block in an if...else chain;
-		// we first handle filter 'comment_closed', but another
-		// plugin hooking that later can override our return,
-		// so use this filter as last chance to refuse listed addrs
-		// MAYBE this should be an option
-		$b = $this->filter_ip4_bl_internal(true, 'comments');
-		if ( $b === true ) {
-			// TRANSLATORS: polite rejection message
-			// in response to blacklisted IP address
-			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
-		}
-	}
-
-	// add_action('comment_closed', $scf, 1);
-	public function action_comment_closed($comment_post_ID) {
-		// this gets called if WP core 'comments_open()' is false,
-		// but we only act here if our filter returned false
-		// and found an rbl hit.
-		if ( true ) { // not at all sure about code paths to this!
-			if ( self::get_comments_open_option() != 'true' ) {
-				return;
-			}
-			
-			$r = $this->get_rbl_result();
-			
-			// was rbl check called? did it fail internally
-			if ( $r === null ) {
-				return;
-			}		
-			// was simple rbl check false?
-			if ( $r === false ) {
-				return;
-			}		
-			
-			// TODO: make option
-			$txt =__('Sorry, but no, thank you.', 'spambl_l10n');
-			printf('<h1>%s</h1>', $txt);
-		}
-	}
-
 	// helper: get previous BL result, return:
 	// null if no previous result, else the
 	// boolean result (true||false)
@@ -1669,12 +1694,37 @@ class Spam_BLIP_class {
 		return $this->rbl_result[0];
 	}
 
-	// add_filter('comments_open', $scf, 1);
-	// NOTE: this may/will be called many times per page
-	public function filter_comments_open($open) {
+	// anything scheduled for just before PHP shutdow: WP
+	// calls this action from its own registered
+	// PHP register_shutdown_function() callback
+	public function action_shutdown() {
+		if ( $this->do_db_maintain ) {
+			$this->do_db_maintain = false;
+			$this->db_tbl_real_maintain();
+		}
+	}
+
+	// add_action('pre_comment_on_post', $scf, 1);
+	// This action is called from the last 'else' in
+	// and if/else chain starting with a test of comments_open()
+	// which applies filter 'comments_open', see filter_comments_open()
+	// below. If comments are open, this gets called. DNS RBL
+	// lookup is done here because the wait for result will
+	// only affect the commenter, not every page load. A real
+	// human commenter will probably not find a delay of a couple
+	// seconds after submitting comment as noticeable as a
+	// similar delay in the whole page load; it will just
+	// seem like processing of comment at server (it is).
+	// This does not get called if post status is 'trash' or
+	// if it is a draft or requires password -- all those cause
+	// an exit (after an action hook call), so spam should
+	// not get through in those cases.
+	public function action_pre_comment_on_post($comment_post_ID) {
 		if ( self::get_comments_open_option() != 'true' ) {
-			return $open;
+			return;
 		}		
+
+		self::dbglog('enter action_pre_comment_on_post');
 
 		// was rbl check called already? if so,
 		// use stored result
@@ -1682,11 +1732,62 @@ class Spam_BLIP_class {
 		
 		// if not done already
 		if ( $prev === null ) {
-			return $this->filter_ip4_bl_internal($open, 'comments');
+			$this->do_db_bl_check(true, 'comments') ;
+			$prev = $this->get_rbl_result();
+		}
+		
+		if ( $prev !== false ) {
+			self::dbglog('BAILING FROM action_pre_comment_on_post');
+			// TRANSLATORS: polite rejection message
+			// in response to blacklisted IP address
+			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
+		}
+	}
+
+	// add_action('comment_closed', $scf, 1);
+	// This gets called if comments_open(), filtered below,
+	// yields not true. The block ends with wp_die(), so it is
+	// not needed here, and would exclude subsequent hooks if
+	// done here. An additional message might be printed, even
+	// though there's not much point to it
+	public function action_comment_closed($comment_post_ID) {
+		if ( self::get_comments_open_option() != 'true' ) {
+			return;
+		}
+		
+		if ( $this->get_rbl_result() === true ) {
+			// TRANSLATORS: polite rejection message
+			// in response to blacklisted IP address
+			echo __('Sorry, but no, thank you.', 'spambl_l10n') .'<hr>';
+		}
+	}
+
+	// add_filter('comments_open', $scf, 1);
+	// NOTE: this may/will be called many times per page,
+	// for each comment link on page.
+	// This should not be used for the DNS RBL lookup because
+	// waiting for the response can caused a noticeable stall
+	// of page loading in client.
+	// action_pre_comment_on_post is used for the RBL lookup;
+	// see comment there.
+	// OTOH, this filter will look in the hit db, which is fast,
+	// and nip it in the bud early if a hit is found.
+	public function filter_comments_open($open) {
+		if ( self::get_comments_open_option() != 'true' ) {
+			return $open;
+		}		
+
+		// was data store check called already? if so,
+		// use stored result
+		$prev = $this->dbl_result;
+		
+		// if not done already
+		if ( $prev === false || ! is_array($prev) ) {
+			return $this->do_db_bl_check($open, 'comments', false);
 		}
 		
 		// if already done, but not a hit
-		if ( $prev === false ) {
+		if (  $prev[0] === false ) {
 			return $open;
 		}
 
@@ -1706,7 +1807,7 @@ class Spam_BLIP_class {
 		
 		// if not done already
 		if ( $prev === null ) {
-			return $this->filter_ip4_bl_internal($open, 'pings');
+			return $this->do_db_bl_check($open, 'pings');
 		}
 		
 		// if already done, but not a hit
@@ -1719,8 +1820,8 @@ class Spam_BLIP_class {
 	}
 
 	// internal BL check for use by e.g., filters
-	// Returns false fo a BL hit, else returns arg $def
-	public function filter_ip4_bl_internal($def, $statype) {
+	// Returns false for a BL hit, else returns arg $def
+	public function do_db_bl_check($def, $statype, $rbl = true) {
 		$addr = self::get_conn_addr();
 
 		if ( $addr === false ) {
@@ -1760,18 +1861,28 @@ class Spam_BLIP_class {
 		}
 
 		// option to whitelist addresses that TOR lists as exit nodes
-		if ( $this->tor_optional_whitelist($addr, $statype) ) {
+		if ( $this->tor_non_optional_whitelist($addr, $rbl) ) {
+			// flag this like db check w/o a hit
+			$this->dbl_result = array(false);
 			return $def;
 		}
 		
 		$pretime = self::best_time();
 
-		// TODO: record stats
+		// optional data store check
 		if ( self::get_usedata_option() != 'false' ) {
 			$d = $this->db_get_address($addr);
 			$posttime = self::best_time();
 
+			$hit = false;
 			if ( is_array($d) ) {
+				if ( $d['lasttype'] === 'comments' ||
+					 $d['lasttype'] === 'pings' ) {
+					$hit = true;
+				}
+			}
+
+			if ( $hit ) {
 				// optional hit logging
 				if ( self::get_hitlog_option() != 'false' ) {
 					// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
@@ -1816,18 +1927,37 @@ class Spam_BLIP_class {
 
 				// set the result; checked in various places
 				$this->rbl_result = array(true);
+				$this->dbl_result = array(true);
 				return false;
 			}
 		}
 
-		// again, in case last block was slow
-		$pretime = self::best_time();
-
-		$ret = $this->bl_check_addr($addr);
-		if ( $ret === false ) {
+		// if not $rbl only the optional data store check is
+		// wanted, for routines that should not wait on DNS
+		if ( $rbl !== true ) {
+			$this->dbl_result = array(false);
 			return $def;
 		}
+
+		// time again, in case last block was slow,
+		// and do lookup
+		$pretime = self::best_time();
+		$ret = $this->bl_check_addr($addr);
 		$posttime = self::best_time();
+		self::dbglog(
+			'DNS lookup in ' . ($posttime - $pretime) . ' secs');
+
+		if ( $ret === false ) {
+			// not a RBL hit
+			if ( self::get_rec_non_option() != 'false' ) {
+				$this->db_update_array(
+					$this->db_make_array(
+						$addr, 1, (int)$pretime, 'non'
+					)
+				);
+			}
+			return $def;
+		}
 		
 		// We have a hit!
 		$ret = false;
@@ -1884,37 +2014,57 @@ class Spam_BLIP_class {
 		return $ret;
 	}
 
-	// add_filter('tables_to_repair', $scf, 1);
-	// Allows adding table name to WP core table repair routing
-	public function filter_tables_to_repair($tbls) {
-		$tbls[] = $this->db_tablename();
-		return $tbls;
-	}
-
-
 	// if option to whitelist TOR is set and address is *found*
 	// to be a TOR exit node (there are false negatives), then
 	// return true; else return false
-	protected function tor_optional_whitelist($addr, $statype) {
+	protected function tor_non_optional_whitelist($addr, $dns = true) {
 		// if opt
-		if ( self::get_torwhite_option() == 'false' ) {
+		$toro = self::get_torwhite_option();
+		$nono = self::get_rec_non_option();
+		if ( $toro == 'false' && $nono == 'false' ) {
 			return false;
 		}
 
+		$t = '';
 		if ( self::get_usedata_option() != 'false' ) {
 			$d = $this->db_get_address($addr);
-			// use 'torx' for tor exit node
-			if ( is_array($d) && $d['lasttype'] === 'torx' ) {
+			if ( is_array($d) ) {
+				$t = $d['lasttype'];
+			}
+
+			if ( $t === 'non' ) {
+				if ( $nono == 'false' ) $t = '';
+			} else if ( $t === 'torx' ) {
+				if ( $toro == 'false' ) $t = '';
+			}
+
+			if ( $t === 'torx' ) {
 				if ( self::get_hitlog_option() != 'false' ) {
-					// TRANSLATORS: %s is IP4 address; DATA is the
-					// ddata store (db) used by this plugin
-					$m = __('Found "%s" to be a tor exit, in data -- passed per option', 'spambl_l10n');
-					self::errlog(sprintf($m, $addr));
+					// TRANSLATORS: %1$s is IP4 address; %2$u is the
+					// number of times adress was seen previously
+					$m = __('Found "%1$s" to be a tor exit, %2$u hits in data -- passed per option', 'spambl_l10n');
+					self::errlog(sprintf($m, $addr, $d['hitcount']));
 				}
+			}
+			if ( $t === 'torx' || $t === 'non' ) {
+				// optionally record stats
+				if ( self::get_recdata_option() != 'false' ) {
+					$this->db_update_array(
+						$this->db_make_array(
+							$addr, 1, (int)time(), $t
+						)
+					);
+				}
+			
 				// mark for this invocation
 				$this->rbl_result = array(false);
 				return true;
 			}
+		}
+
+		// remainder is only for tor, and only if DNS check is wanted
+		if ( $toro == 'false' || $dns !== true ) {
+			return false;
 		}
 
 		$s = $_SERVER["SERVER_ADDR"];
@@ -1942,7 +2092,7 @@ class Spam_BLIP_class {
 				// use 'torx' for tor exit node
 				$this->db_update_array(
 					$this->db_make_array(
-						$addr, 1, (int)self::best_time(), 'torx'
+						$addr, 1, (int)time(), 'torx'
 					)
 				);
 			}
@@ -2017,8 +2167,14 @@ class Spam_BLIP_class {
 		return false;
 	}
 	
-	// maintain table: trim according to TTL and max rows options
+	// maintain table: just set flag; act on shutdown hook
 	protected function db_tbl_maintain() {
+		// flag maintenance at shutdown
+		$this->do_db_maintain = true;
+	}
+	
+	// maintain table: trim according to TTL and max rows options
+	private function db_tbl_real_maintain() {
 		$tm = self::best_time();
 		global $wpdb;
 		
@@ -2144,7 +2300,7 @@ class Spam_BLIP_class {
 // hitcount == count of hits
 // seeninit == *epoch* time of 1st recorded hit
 // seenlast == *epoch* time of last recorded hit
-// lasttype == enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3')
+// lasttype == enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3', 'non', 'white')
 // varispam == bool set true if lasttype != current type
 // 
 $qs = <<<EOQ
@@ -2153,7 +2309,7 @@ CREATE TABLE $tbl (
   hitcount int(11) UNSIGNED NOT NULL default '0',
   seeninit int(11) UNSIGNED NOT NULL default '0',
   seenlast int(11) UNSIGNED NOT NULL,
-  lasttype enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3') NOT NULL default 'comments',
+  lasttype enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3', 'non', 'white') NOT NULL default 'comments',
   varispam tinyint(1) NOT NULL default '0',
   PRIMARY KEY  (address),
   KEY (seenlast),
@@ -2359,15 +2515,8 @@ EOQ;
 		$this->db_lock_table();
 		if ( ! method_exists($wpdb, 'delete') ) {
 			// w/o delete method use query
-			$r = $wpdb->query(
-				$wpdb->prepare(
-					"
-					DELETE * FROM {$tbl}
-					WHERE address = %s
-					",
-					$addr
-				)
-			);
+			$q = "DELETE * FROM {$tbl} WHERE address = '{$addr}'";
+			$r = $wpdb->get_results($q, ARRAY_N);
 		} else {
 			$wh = array('address' => $addr);
 			$r = $wpdb->delete($tbl, $wh, array('%s'));
@@ -2606,8 +2755,9 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 		$bc  = $this->plinst->get_comments_open_option();
 		$bp  = $this->plinst->get_pings_open_option();
+		$ud  = $this->plinst->get_usedata_option();
 		$inf = false;
-		if ( $bc != 'false' || $bp != 'false' ) {
+		if ( $ud != 'false' && ($bc != 'false' || $bp != 'false') ) {
 			$inf = $this->plinst->get_db_info();
 		}
 		
