@@ -135,6 +135,8 @@ class Spam_BLIP_class {
 	const opttorpass = 'torpass';
 	// record non-hit DNS lookups?
 	const optnonhrec = 'nonhrec';
+	// check existing comments marked as spam?
+	const optchkexst = 'chkexst';
 	// keep rbl hit data?
 	const optrecdata = 'recdata';
 	// use rbl hit data?
@@ -173,6 +175,8 @@ class Spam_BLIP_class {
 	const deftorpass = 'false';
 	// record non-hit DNS lookups?
 	const defnonhrec = 'false';
+	// check existing comments marked as spam?
+	const defchkexst = 'true';
 	// keep rbl hit data?
 	const defrecdata = 'true';
 	// use rbl hit data?
@@ -304,6 +308,7 @@ class Spam_BLIP_class {
 				self::optpingflt => self::defpingflt,
 				self::opttorpass => self::deftorpass,
 				self::optnonhrec => self::defnonhrec,
+				self::optchkexst => self::defchkexst,
 				self::optrecdata => self::defrecdata,
 				self::optusedata => self::defusedata,
 				self::optplugwdg => self::defplugwdg,
@@ -321,6 +326,7 @@ class Spam_BLIP_class {
 			self::optpingflt => self::defpingflt,
 			self::opttorpass => self::deftorpass,
 			self::optnonhrec => self::defnonhrec,
+			self::optchkexst => self::defchkexst,
 			self::optrecdata => self::defrecdata,
 			self::optusedata => self::defusedata,
 			self::optttldata => self::defttldata,
@@ -409,6 +415,11 @@ class Spam_BLIP_class {
 				self::optnonhrec,
 				$items[self::optnonhrec],
 				array($this, 'put_nonhrec_opt'));
+		$fields[$nf++] = new $Cf(self::optchkexst,
+				self::wt(__('Check existing comment spam:', 'spambl_l10n')),
+				self::optchkexst,
+				$items[self::optchkexst],
+				array($this, 'put_chkexst_opt'));
 
 		// section object includes description callback
 		$sections[$ns++] = new $Cs($fields,
@@ -1066,6 +1077,7 @@ class Spam_BLIP_class {
 				case self::optpingflt:
 				case self::opttorpass:
 				case self::optnonhrec:
+				case self::optchkexst:
 				case self::optrecdata:
 				case self::optusedata:
 				case self::optplugwdg:
@@ -1179,6 +1191,16 @@ class Spam_BLIP_class {
 			address might be dynamic and therefore an association
 			with a welcome commenter would not be valid.
 			The default is false.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Check existing comment spam"
+			option will cause the connecting addresses with
+			comments already store by <em>WordPress</em> and
+			marked as spam. If any are found that are not too
+			old (see "Data records TTL" below), The connection
+			is considered a spammer, and the address is added
+			to the hit data store.
+			The default is true.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
@@ -1390,6 +1412,13 @@ class Spam_BLIP_class {
 	public function put_nonhrec_opt($a) {
 		$tt = self::wt(__('Store non-hit addresses for repeats', 'spambl_l10n'));
 		$k = self::optnonhrec;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
+	// check exising comments?
+	public function put_chkexst_opt($a) {
+		$tt = self::wt(__('Check address in existing comments', 'spambl_l10n'));
+		$k = self::optchkexst;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
@@ -1634,6 +1663,11 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::optnonhrec);
 	}
 
+	// for whether to check WP stored comments
+	public static function get_chkexist_option() {
+		return self::opt_by_name(self::optchkexst);
+	}
+
 	/**
 	 * core functionality
 	 */
@@ -1714,7 +1748,7 @@ class Spam_BLIP_class {
 	// human commenter will probably not find a delay of a couple
 	// seconds after submitting comment as noticeable as a
 	// similar delay in the whole page load; it will just
-	// seem like processing of comment at server (it is).
+	// seem like processing of comment at server (which it is).
 	// This does not get called if post status is 'trash' or
 	// if it is a draft or requires password -- all those cause
 	// an exit (after an action hook call), so spam should
@@ -1743,6 +1777,35 @@ class Spam_BLIP_class {
 			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
 		}
 	}
+
+	// this action is invoked in wp-trackback.php, last action
+	// before trackback_response(0); just after
+	// wp_new_comment($commentdata), so it is too late
+	// to prevent spam
+	//public function action_trackback_post($insert_ID) {
+		//if ( self::get_pings_open_option() != 'true' ) {
+			//return;
+		//}		
+
+		//self::dbglog('enter action_trackback_post');
+
+		//// was rbl check called already? if so,
+		//// use stored result
+		//$prev = $this->get_rbl_result();
+		
+		//// if not done already
+		//if ( $prev === null ) {
+			//$this->do_db_bl_check(true, 'pings') ;
+			//$prev = $this->get_rbl_result();
+		//}
+		
+		//if ( $prev !== false ) {
+			//self::dbglog('BAILING FROM action_trackback_post');
+			//// TRANSLATORS: polite rejection message
+			//// in response to blacklisted IP address
+			//wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
+		//}
+	//}
 
 	// add_action('comment_closed', $scf, 1);
 	// This gets called if comments_open(), filtered below,
@@ -1932,6 +1995,14 @@ class Spam_BLIP_class {
 			}
 		}
 
+		// optional check in WP stored comments
+		if ( $this->chk_comments($addr, (int)$pretime) === true ) {
+			// set the result; checked in various places
+			$this->rbl_result = array(true);
+			$this->dbl_result = array(true);
+			return false;
+		}
+
 		// if not $rbl only the optional data store check is
 		// wanted, for routines that should not wait on DNS
 		if ( $rbl !== true ) {
@@ -1949,7 +2020,8 @@ class Spam_BLIP_class {
 
 		if ( $ret === false ) {
 			// not a RBL hit
-			if ( self::get_rec_non_option() != 'false' ) {
+			if ( self::get_rec_non_option() != 'false' &&
+			     self::get_recdata_option() != 'false' ) {
 				$this->db_update_array(
 					$this->db_make_array(
 						$addr, 1, (int)$pretime, 'non'
@@ -2012,6 +2084,61 @@ class Spam_BLIP_class {
 		self::hit_optional_bailout($addr, $statype);
 
 		return $ret;
+	}
+
+
+	// optionally check comments saved by WP for those marked
+	// as spam and having address $addr and having GMT >=
+	// $tm - TTL option
+	protected function chk_comments($addr, $tm) {
+		$opt = self::get_chkexist_option();
+		if ( $opt == 'false' ) {
+			return false;
+		}
+
+		global $wpdb;
+		$q = sprintf("SELECT %s FROM %s WHERE %s = '%s' AND %s = '%s'", 
+			'comment_date_gmt, comment_type', $wpdb->comments,
+			'comment_approved', 'spam',
+			'comment_author_IP', $addr
+		);
+		$r = $wpdb->get_results($q, ARRAY_A);
+
+		if ( is_array($r) && isset($r[0]) ) {
+			$ttl = (int)self::get_ttldata_option();
+			if ( $ttl < 1 ) {
+				$ttl = $tm;
+			}
+			$old = $tm - $ttl;
+
+			foreach ( $r as $a ) {
+				// WP stores times as strings
+				$ti = strtotime($a['comment_date_gmt'] . ' GMT', 0);
+				if ( (int)$ti < $old ) {
+					continue;
+				}
+				// hit: might be more, but we don't care here
+				// optionally record stats
+				if ( self::get_recdata_option() != 'false' ) {
+					$ty = $a['comment_type'] == ''
+						? 'comments' : 'pings';
+					$this->db_update_array(
+						$this->db_make_array(
+							$addr, 1, (int)$tm, $ty
+						)
+					);
+					// maintain table
+					$this->db_tbl_maintain();
+					self::dbglog('FOUND spam comment, type "' .
+						$ty . '", address ' . $addr .
+						', from "' . $a['comment_date_gmt'] . ' GMT"'
+					);
+				}
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	// if option to whitelist TOR is set and address is *found*
@@ -2300,16 +2427,23 @@ class Spam_BLIP_class {
 // hitcount == count of hits
 // seeninit == *epoch* time of 1st recorded hit
 // seenlast == *epoch* time of last recorded hit
-// lasttype == enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3', 'non', 'white')
+// lasttype == enum('comments', 'pings', 'torx', 'x1', 'x2', 'non', 'white', 'black')
+//		set type: torx for whitelist option, non for recording non-hits
+//                option, white||black for user entered addresses
+//                and a couple for expansion
 // varispam == bool set true if lasttype != current type
 // 
+// charset ascii with case senitive binary collation is suitable
+// for the IP address column, and enum 'lasttype' is constrained
+// to that, and can reasonably be *assumed* to have the fastest possible
+// comparisons
 $qs = <<<EOQ
 CREATE TABLE $tbl (
-  address char(15) NOT NULL default '0.0.0.0',
+  address char(15) CHARACTER SET ascii COLLATE ascii_bin NOT NULL default '0.0.0.0',
   hitcount int(11) UNSIGNED NOT NULL default '0',
   seeninit int(11) UNSIGNED NOT NULL default '0',
-  seenlast int(11) UNSIGNED NOT NULL,
-  lasttype enum('comments', 'pings', 'torx', 'x1', 'x2', 'x3', 'non', 'white') NOT NULL default 'comments',
+  seenlast int(11) UNSIGNED NOT NULL default '0',
+  lasttype enum('comments', 'pings', 'torx', 'x1', 'x2', 'non', 'white', 'black') CHARACTER SET ascii COLLATE ascii_bin NOT NULL default 'comments',
   varispam tinyint(1) NOT NULL default '0',
   PRIMARY KEY  (address),
   KEY (seenlast),
