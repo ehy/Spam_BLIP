@@ -2110,7 +2110,8 @@ class Spam_BLIP_class {
 
 		global $wpdb;
 		$q = sprintf("SELECT %s FROM %s WHERE %s = '%s' AND %s = '%s'", 
-			'comment_date_gmt, comment_type', $wpdb->comments,
+			'UNIX_TIMESTAMP(comment_date_gmt), comment_type',
+				$wpdb->comments,
 			'comment_approved', 'spam',
 			'comment_author_IP', $addr
 		);
@@ -2124,11 +2125,7 @@ class Spam_BLIP_class {
 			$old = $tm - $ttl;
 
 			foreach ( $r as $a ) {
-				// WP stores times as strings (unsigned int would
-				// have been very nice, and could have been tested
-				// in the db query)
-				$ti = strtotime($a['comment_date_gmt'] . ' GMT', 0);
-				if ( (int)$ti < $old ) {
+				if ( (int)$a['comment_date_gmt'] < $old ) {
 					continue;
 				}
 				// hit, not too old . . .
@@ -2460,8 +2457,8 @@ CREATE TABLE $tbl (
   lasttype enum('comments', 'pings', 'torx', 'x1', 'x2', 'non', 'white', 'black') CHARACTER SET ascii COLLATE ascii_bin NOT NULL default 'comments',
   varispam tinyint(1) NOT NULL default '0',
   PRIMARY KEY  (address),
-  KEY (seenlast),
-  KEY (lasttype),
+  KEY seenlast (seenlast),
+  KEY lasttype (lasttype),
   KEY (seenlast, lasttype)
 );
 
