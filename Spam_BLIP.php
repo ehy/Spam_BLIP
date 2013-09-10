@@ -2459,7 +2459,7 @@ CREATE TABLE $tbl (
   PRIMARY KEY  (address),
   KEY seenlast (seenlast),
   KEY lasttype (lasttype),
-  KEY (seenlast, lasttype)
+  KEY complast (seenlast, lasttype)
 );
 
 EOQ;
