@@ -410,11 +410,6 @@ class Spam_BLIP_class {
 				self::opttorpass,
 				$items[self::opttorpass],
 				array($this, 'put_torpass_opt'));
-		$fields[$nf++] = new $Cf(self::optnonhrec,
-				self::wt(__('Store (and use) non-hit addresses:', 'spambl_l10n')),
-				self::optnonhrec,
-				$items[self::optnonhrec],
-				array($this, 'put_nonhrec_opt'));
 		$fields[$nf++] = new $Cf(self::optchkexst,
 				self::wt(__('Check existing comment spam:', 'spambl_l10n')),
 				self::optchkexst,
@@ -452,8 +447,13 @@ class Spam_BLIP_class {
 				self::optmaxdata,
 				$items[self::optmaxdata],
 				array($this, 'put_maxdata_opt'));
+		$fields[$nf++] = new $Cf(self::optnonhrec,
+				self::wt(__('Store (and use) non-hit addresses:', 'spambl_l10n')),
+				self::optnonhrec,
+				$items[self::optnonhrec],
+				array($this, 'put_nonhrec_opt'));
 
-		// misc
+		// data store usage
 		$sections[$ns++] = new $Cs($fields,
 				'Spam_BLIP_plugin1_datasto_section',
 				'<a name="data_store">' .
@@ -461,7 +461,7 @@ class Spam_BLIP_class {
 					. '</a>',
 				array($this, 'put_datastore_desc'));
 		
-		// options for widget areas
+		// options for miscellaneous items
 		$nf = 0;
 		$fields = array();
 		$fields[$nf++] = new $Cf(self::optplugwdg,
@@ -508,7 +508,7 @@ class Spam_BLIP_class {
 				$items[self::optdelstor],
 				array($this, 'put_del_stor'));
 
-		// prepare sections to appear under admin page
+		// inst sections
 		$sections[$ns++] = new $Cs($fields,
 				'Spam_BLIP_plugin1_inst_section',
 				'<a name="install">' .
@@ -517,9 +517,7 @@ class Spam_BLIP_class {
 				array($this, 'put_inst_desc'));
 
 		// prepare admin page specific hooks per page. e.g.:
-		// (now set to false, but code remains for reference;
-		// see comment '// hook&filter to make shortcode form for editor'
-		// in __construct())
+		// (now set to false, but code remains for reference)
 		if ( false ) {
 			$suffix_hooks = array(
 				'admin_head' => array($this, 'admin_head'),
@@ -536,15 +534,15 @@ class Spam_BLIP_class {
 		$Cp = self::mk_aclv('OptPage');
 		$page = new $Cp(self::opt_group, $sections,
 			self::settings_page_id,
-			self::wt(__('Spam_BLIP Plugin', 'spambl_l10n')),
-			self::wt(__('Spam_BLIP Configuration', 'spambl_l10n')),
+			self::wt(__('Spam BLIP Plugin', 'spambl_l10n')),
+			self::wt(__('Spam BLIP Configuration Settings', 'spambl_l10n')),
 			array(__CLASS__, 'validate_opts'),
 			/* pagetype = 'options' */ '',
 			/* capability = 'manage_options' */ '',
 			array($this, 'setting_page_output_callback')/* callback '' */,
 			/* 'hook_suffix' callback array */ $suffix_hooks,
-			self::wt(__('Configuration of Spam_BLIP Plugin', 'spambl_l10n')),
-			self::wt(__('Display and Runtime Settings.', 'spambl_l10n')),
+			self::wt(__('<em>Spam BLIP</em> Plugin Settings', 'spambl_l10n')),
+			self::wt(__('Options controlling <em>Spam BLIP</em> functions.', 'spambl_l10n')),
 			self::wt(__('Save Settings', 'spambl_l10n')));
 		
 		$Co = self::mk_aclv('Options');
@@ -574,8 +572,6 @@ class Spam_BLIP_class {
 	
 	// register shortcode editor forms javascript
 	public static function filter_admin_print_scripts() {
-		// cap check: not sure if this is necessary here,
-		// hope it doesn't cause failures for legit users
 	    if ( false && $GLOBALS['editing'] && current_user_can('edit_posts') ) {
 			$jsfn = 'Spam_BLIP_plugin_java_object';
 			$pf = self::mk_pluginfile();
@@ -1178,28 +1174,15 @@ class Spam_BLIP_class {
 			defense.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
-		$t = self::wt(__('The "Store (and use) non-hit addresses"
-			option will cause commenter addresses to be stored even
-			if the address was not found in the spammer lists. This
-			will save additional DNS lookups for repeat commenters.
-			This should only be used if there is a perceptible delay
-			caused by the DNS lookups, because an address might
-			turn out to be associated with a spammer and subsequently
-			be added to the online spam blacklists, but this option
-			would allow that address to post comments until its
-			record expired from the plugin data store. Also, an
-			address might be dynamic and therefore an association
-			with a welcome commenter would not be valid.
-			The default is false.', 'spambl_l10n'));
-		printf('<p>%s</p>%s', $t, "\n");
-
-		$t = self::wt(__('The "Check existing comment spam"
-			option will cause the connecting addresses with
-			comments already store by <em>WordPress</em> and
-			marked as spam. If any are found that are not too
-			old (see "Data records TTL" below), The connection
+		$t = self::wt(__('With "Check existing comment spam"
+			enabled connecting addresses are checked against
+			comments already stored by <em>WordPress</em> and
+			marked as spam. If a match is found with a comment
+			that is not too old (according to the TTL setting,
+			see "Data records TTL" below),
+			the connection
 			is considered a spammer, and the address is added
-			to the hit data store.
+			to the hit data store (if enabled).
 			The default is true.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
@@ -1215,8 +1198,8 @@ class Spam_BLIP_class {
 		$cnt = $this->db_get_rowcount();
 		if ( $cnt ) {
 			$t = self::wt(
-				_n('(There is %d record in the data store)',
-				   '(There are %d records in the data store)',
+				_n('(There is %u record in the data store)',
+				   '(There are %u records in the data store)',
 				   $cnt, 'spambl_l10n')
 			);
 			printf('<p>%s</p>%s', sprintf($t, $cnt), "\n");
@@ -1229,19 +1212,22 @@ class Spam_BLIP_class {
 		$t = self::wt(__('These options enable or disable
 			the storage of blacklist lookup results in the
 			<em>WordPress</em> database, or the use of the
-			stored data to before DNS lookup.
-			</p><p>
-			The "Keep data" option enables recording of <em>hit</em>
-			data such as the connecting IP address, and the times
+			stored data to before DNS lookup.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Keep data" option enables recording of
+			hit data such as the connecting IP address, and the times
 			the address was first seen and last seen.
 			(This data is also used if included widget is
-			enabled.)
-			</p><p>
-			The "Use data" option enables a check in the
+			enabled.)', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Use data" option enables a check in the
 			stored data; if a hit is found there then the
-			DNS lookup is not performed.
-			</p><p>
-			"Data records TTL" sets an expiration time for individual
+			DNS lookup is not performed.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('"Data records TTL" sets an expiration time for
 			records in the data store. The records should not be kept
 			permanently, or even for very long, because the IP
 			address might not belong to the spammer, but rather
@@ -1252,16 +1238,33 @@ class Spam_BLIP_class {
 			value is one day (86400 seconds). If you do not want
 			any of the presets, the text field accepts a value
 			in seconds, where zero (0) or less will disable the
-			TTL.
-			</p><p>
-			The "Maximum data records" option limits how many records
-			will be kept in the database. It is likely that as
-			the data grow larger, the oldest records will no
+			TTL.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Maximum data records" option limits how
+			many records will be kept in the database. It is likely that
+			as the data grow larger, the oldest records will no
 			longer be needed. Records are judged old based on
 			the time last seen. Use your judgement with this:
 			if you always get large amounts of spam, a larger
 			value might be warranted.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Store (and use) non-hit addresses"
+			option will cause commenter addresses to be stored even
+			if the address was not found in the spammer lists. This
+			will save additional DNS lookups for repeat commenters.
+			This should only be used if there is a perceptible delay
+			caused by the DNS lookups, because an address might
+			turn out to be associated with a spammer and subsequently
+			be added to the online spam blacklists, but this option
+			would allow that address to post comments until its
+			record expired from the plugin data store. Also, an
+			address might be dynamic and therefore an association
+			with a welcome commenter would not be valid.
+			The default is false.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 		$t = self::wt(__('Go back to top (General section).', 'spambl_l10n'));
@@ -1276,15 +1279,18 @@ class Spam_BLIP_class {
 			return;
 		}
 
-		$t = self::wt(__('The "Use the included widget" option selects 
+		$t = self::wt(__('The "Use the included widget" option enables
 			whether the multi-widget included with the plugin is
 			enabled. The widget will display some counts of the
 			stored data, if the store is enabled. You should consider
 			whether you want that data on public display, but
 			if you find that acceptable, the widget should give
 			a convenient view of the effectiveness of the plugin.
-			</p><p>
-			The "Log bad IP addresses" option selects log messages when
+			', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Log bad IP addresses" option enables
+			log messages when
 			the remote IP address provided in the CGI/1.1
 			environment variable "REMOTE_ADDR" is wrong. Software
 			used in a hosting arrangement can cause this, even
@@ -1300,24 +1306,27 @@ class Spam_BLIP_class {
 			no reason to turn this option off. In fact, if
 			these log messages are seen (look for "REMOTE_ADDR"),
 			the hosting administrator
-			or technical contact should be notified (and their response
-			should be that a fix is on the way).
+			or technical contact should be notified that their
+			system has a bug.
 			This option should be off when developing a site on
 			a private network or single machine, because in this
 			case error log messages might be issued for addresses
 			that are valid on the network. With this option off,
 			the plugin will still check the address and skip
 			the blacklist DNS lookup if the address is reserved.
-			</p><p>
-			The "Log blacklisted IP addresses" option selects logging
+			', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('"Log blacklisted IP addresses" selects logging
 			of blacklist hits with the remote IP address. This
 			is only informative, and will add unneeded lines
 			in the error log. New plugin users might like to
 			enable this temporarily to see the effect the plugin
-			has had.
-			</p><p>
-			The "Bail out on blacklisted IP" option will have the
-			plugin terminate the blog output
+			has had.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Bail out on blacklisted IP"
+			option will have the plugin terminate the blog output
 			when the connecting IP address is blacklisted. The
 			default is to only disable comments, and allow the
 			page to be produced normally. This option will save
@@ -1328,6 +1337,7 @@ class Spam_BLIP_class {
 			miss your content.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
+
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 		$t = self::wt(__('Go back to top (General section).', 'spambl_l10n'));
@@ -1351,13 +1361,15 @@ class Spam_BLIP_class {
 			place if you intend to delete the plugin permanently.
 			If you intend to delete and then reinstall the plugin,
 			possibly for a new version or update, then keeping the
-			these data might be a good idea.
-			</p><p>
-			The "Delete setup options" option and the
+			these data might be a good idea.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Delete setup options" option and the
 			"Delete database table" option are independent;
 			one may be deleted while the other is saved.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
+
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 		$t = self::wt(__('Go back to top (General section).', 'spambl_l10n'));
@@ -2112,13 +2124,14 @@ class Spam_BLIP_class {
 			$old = $tm - $ttl;
 
 			foreach ( $r as $a ) {
-				// WP stores times as strings
+				// WP stores times as strings (unsigned int would
+				// have been very nice, and could have been tested
+				// in the db query)
 				$ti = strtotime($a['comment_date_gmt'] . ' GMT', 0);
 				if ( (int)$ti < $old ) {
 					continue;
 				}
-				// hit: might be more, but we don't care here
-				// optionally record stats
+				// hit, not too old . . .
 				if ( self::get_recdata_option() != 'false' ) {
 					$ty = $a['comment_type'] == ''
 						? 'comments' : 'pings';
@@ -2134,6 +2147,7 @@ class Spam_BLIP_class {
 						', from "' . $a['comment_date_gmt'] . ' GMT"'
 					);
 				}
+				// . . . one is all we need
 				return true;
 			}
 		}
