@@ -2133,7 +2133,7 @@ class Spam_BLIP_class {
 				}
 				// hit, not too old . . .
 				if ( self::get_recdata_option() != 'false' ) {
-					$ty = $a['comment_type'] == ''
+					$ty = trim($a['comment_type']) == ''
 						? 'comments' : 'pings';
 					$this->db_update_array(
 						$this->db_make_array(
@@ -2759,7 +2759,9 @@ EOQ;
 		if ( $type === 'pings' )    { $t = 'pings'; }
 		if ( $type === 'torx' )   { $t = 'torx'; }
 		if ( $type === 'x2' )   { $t = 'x2'; }
-		if ( $type === 'x3' )   { $t = 'x3'; }
+		if ( $type === 'non' )   { $t = 'non'; }
+		if ( $type === 'white' )   { $t = 'white'; }
+		if ( $type === 'black' )   { $t = 'black'; }
 
 		return array(
 			'address'  => $addr,
@@ -2790,61 +2792,65 @@ EOQ;
 		$r['k'][] = 'row_count';
 		$r['row_count'] = $c;
 		
-		// more
+		// common values in locals
+		$hour = 3600;
+		$day = $hour * 24;
+		$week = $day * 7;
 		$tf = self::best_time();
 		$tm = (int)$tf;
-		$t1 = $tm - (3600);
-		$w = '' . $t1;
-		$t = 'seenlast';
+		$types = "lasttype = 'pings' OR lasttype = 'comments'";
+
+		$w = '' . ($tm - $hour);
 		$a = $this->db_FUNC('COUNT(*)',
-			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
-		if ( $a !== false && is_array($a[0]) ) {
+			"seenlast > {$w} AND ({$types})");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'hour';
 			$r['hour'] = $a[0][0];
 		}
-		$t = 'hitcount';
-		$a = $this->db_FUNC("SUM({$t})",
-			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
-		if ( $a !== false && is_array($a[0]) ) {
-			$r['k'][] = 'hhour';
-			$r['hhour'] = $a[0][0];
-		}
-		$t1 = $tm - (3600 * 24);
-		$w = '' . $t1;
-		$t = 'seenlast';
 		$a = $this->db_FUNC('COUNT(*)',
-			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
-		if ( $a !== false && is_array($a[0]) ) {
+			"seeninit > {$w} AND ({$types})");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
+			$r['k'][] = 'hourinit';
+			$r['hourinit'] = $a[0][0];
+		}
+
+		$w = '' . ($tm - $day);
+		$a = $this->db_FUNC('COUNT(*)',
+			"seenlast > {$w} AND ({$types})");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'day';
 			$r['day'] = $a[0][0];
 		}
-		$t = 'hitcount';
-		$a = $this->db_FUNC("SUM({$t})",
-			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
-		if ( $a !== false && is_array($a[0]) ) {
-			$r['k'][] = 'hday';
-			$r['hday'] = $a[0][0];
-		}
-		$t1 = $tm - (3600 * 24 * 7);
-		$w = '' . $t1;
-		$t = 'seenlast';
 		$a = $this->db_FUNC('COUNT(*)',
-			"{$t} > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
-		if ( $a !== false && is_array($a[0]) ) {
+			"seeninit > {$w} AND ({$types})");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
+			$r['k'][] = 'dayinit';
+			$r['dayinit'] = $a[0][0];
+		}
+
+		$w = '' . ($tm - $week);
+		$a = $this->db_FUNC('COUNT(*)',
+			"seenlast > {$w} AND ({$types})");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'week';
 			$r['week'] = $a[0][0];
 		}
-		$t = 'hitcount';
-		$a = $this->db_FUNC("SUM({$t})",
-			"seenlast > {$w} AND (lasttype = 'pings' OR lasttype = 'comments')");
-		if ( $a !== false && is_array($a[0]) ) {
-			$r['k'][] = 'hweek';
-			$r['hweek'] = $a[0][0];
+		$a = $this->db_FUNC('COUNT(*)',
+			"seeninit > {$w} AND ({$types})");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
+			$r['k'][] = 'weekinit';
+			$r['weekinit'] = $a[0][0];
 		}
+
+		$a = $this->db_FUNC("SUM(hitcount)", "{$types}");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
+			$r['k'][] = 'htotal';
+			$r['htotal'] = $a[0][0];
+		}
+
 		$w = 'torx';
-		$t = 'lasttype';
-		$a = $this->db_FUNC('COUNT(*)', "{$t} = '{$w}'");
-		if ( $a !== false && is_array($a[0]) ) {
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'tor';
 			$r['tor'] = $a[0][0];
 		}
@@ -2983,10 +2989,10 @@ class Spam_BLIP_widget_class extends WP_Widget {
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
-					case 'hhour':
+					case 'hourinit':
 						printf("\n\t\t<li>%s</li>",
-							sprintf($wt(_n('%d hit in the past hour',
-							   '%d hits in the past hour',
+							sprintf($wt(_n('%d new address in the past hour',
+							   '%d new addresses in the past hour',
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
@@ -2997,10 +3003,10 @@ class Spam_BLIP_widget_class extends WP_Widget {
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
-					case 'hday':
+					case 'dayinit':
 						printf("\n\t\t<li>%s</li>",
-							sprintf($wt(_n('%d hit in the past day',
-							   '%d hits in the past day',
+							sprintf($wt(_n('%d new address in the past day',
+							   '%d new addresses in the past day',
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
@@ -3011,10 +3017,17 @@ class Spam_BLIP_widget_class extends WP_Widget {
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
-					case 'hweek':
+					case 'weekinit':
 						printf("\n\t\t<li>%s</li>",
-							sprintf($wt(_n('%d hit in the past week',
-							   '%d hits in the past week',
+							sprintf($wt(_n('%d new address in the past week',
+							   '%d new addresses in the past week',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'htotal':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d hit in all records',
+							   'total of %d hits in all records',
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
