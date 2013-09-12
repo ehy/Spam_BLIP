@@ -96,7 +96,7 @@ class ChkBL_0_0_1 {
 			if ( $merge ) {
 				$this->doms = array_merge($domarray, self::$defdom);
 			} else {
-				$this->doms = &$domarray;
+				$this->doms = $domarray;
 			}
 		} else {
 			$this->doms = &self::$defdom;

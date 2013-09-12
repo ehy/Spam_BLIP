@@ -153,6 +153,10 @@ class Spam_BLIP_class {
 	const optbliplog = 'log_hit';
 	// bail out (wp_die()) on blacklist hits?
 	const optbailout = 'bailout';
+	// optional active RBL domains
+	const opteditrbl = 'sp_bl_editrbl';
+	// optional inactive (reserved) RBL domains
+	const opteditrbr = 'sp_bl_editrbr';
 	// delete options on uninstall
 	const optdelopts = 'delopts';
 	// delete data store on uninstall
@@ -193,6 +197,10 @@ class Spam_BLIP_class {
 	const defbliplog = 'false';
 	// bail out (wp_die()) on blacklist hits?
 	const defbailout = 'false';
+	// optional active RBL domains
+	const defeditrbl = '';
+	// optional inactive (reserved) RBL domains
+	const defeditrbr = '';
 	// delete options on uninstall
 	const defdelopts = 'true';
 	// delete data store on uninstall
@@ -257,8 +265,7 @@ class Spam_BLIP_class {
 		// URL setup
 		$t = self::$plugindir . '/' . self::$Spam_BLIP_cssname;
 		$this->Spam_BLIP_css = plugins_url($t, $pf);
-		$t = self::$plugindir . '/' . self::$Spam_BLIP_jsdir
-			. '/' . self::$Spam_BLIP_jsname;
+		$t = self::$Spam_BLIP_jsdir . '/' . self::$Spam_BLIP_jsname;
 		$this->Spam_BLIP_js = plugins_url($t, $pf);
 		
 		$this->rbl_result = false;
@@ -335,6 +342,8 @@ class Spam_BLIP_class {
 			self::optipnglog => self::defipnglog,
 			self::optbliplog => self::defbliplog,
 			self::optbailout => self::defbailout,
+			self::opteditrbl => self::defeditrbl,
+			self::opteditrbr => self::defeditrbr,
 			self::optdelopts => self::defdelopts,
 			self::optdelstor => self::defdelstor,
 		);
@@ -352,7 +361,7 @@ class Spam_BLIP_class {
 					$opts[$k] = '' . $v;
 					$mod = true;
 				}
-				if ( $opts[$k] == '' && $v !== '' ) {
+				if ( $opts[$k] === '' && $v !== '' ) {
 					$opts[$k] = '' . $v;
 					$mod = true;
 				}
@@ -493,6 +502,23 @@ class Spam_BLIP_class {
 					. '</a>',
 				array($this, 'put_misc_desc'));
 		
+		// advanced items
+		$nf = 0;
+		$fields = array();
+		$fields[$nf++] = new $Cf(self::opteditrbl,
+				self::wt(__('Active and inactive Blacklist domains:', 'spambl_l10n')),
+				self::opteditrbl,
+				$items[self::opteditrbl],
+				array($this, 'put_editrbl_opt'));
+
+		// advanced
+		$sections[$ns++] = new $Cs($fields,
+				'Spam_BLIP_plugin1_advanced_section',
+				'<a name="advanced_sect">' .
+					self::wt(__('Advanced Options', 'spambl_l10n'))
+					. '</a>',
+				array($this, 'put_advanced_desc'));
+		
 		// install opts section:
 		// field: delete opts on uninstall?
 		$nf = 0;
@@ -521,11 +547,13 @@ class Spam_BLIP_class {
 		if ( false ) {
 			$suffix_hooks = array(
 				'admin_head' => array($this, 'admin_head'),
-				'admin_print_scripts' => array($this, 'admin_js'),
+				'admin_print_scripts' => array($this, 'settings_js'),
 				'load' => array($this, 'admin_load')
-				);
+			);
 		} else {
-			$suffix_hooks = '';
+			$suffix_hooks = array(
+				'admin_print_scripts' => array($this, 'settings_js'),
+			);
 		}
 		
 		// prepare admin page
@@ -549,6 +577,12 @@ class Spam_BLIP_class {
 		$this->opt = new $Co($page);
 	}
 	
+	public function settings_js() {
+		$jsfn = self::$Spam_BLIP_jsname;
+		$j = $this->Spam_BLIP_js;
+        wp_enqueue_script($jsfn, $j);
+	}
+
 	// This function is placed here below the function that sets-up
 	// the options page so that it is easy to see from that function.
 	// It exists only for the echo "<a name='aSubmit'/>\n";
@@ -979,13 +1013,22 @@ class Spam_BLIP_class {
 		if ( empty($opts) ) {
 			$opts = array();
 		}
+
 		// checkboxes need value set - nonexistant means false
-		$ta = self::get_opts_defaults();
+		$ta = self::get_opts_defaults(true); // gets only checkbox ctls
 		foreach ( $ta as $k => $v ) {
 			if ( array_key_exists($k, $opts) ) {
 				continue;
 			}
 			$opts[$k] = 'false';
+		}
+		// remainder of controls
+		$ta = self::get_opts_defaults(false); // gets all
+		foreach ( $ta as $k => $v ) {
+			if ( array_key_exists($k, $opts) ) {
+				continue;
+			}
+			$opts[$k] = $v;
 		}
 	
 		foreach ( $opts as $k => $v ) {
@@ -995,7 +1038,7 @@ class Spam_BLIP_class {
 				continue;
 			}
 			$ot = trim($v);
-			$oo = trim($a_orig[$k]);
+			$oo = $a_orig[$k];
 
 			switch ( $k ) {
 				// Option buttons
@@ -1065,6 +1108,34 @@ class Spam_BLIP_class {
 							$a_out[$k] = $oo;
 							$nerr++;
 							break;
+					}
+					break;
+				// textarea pairs
+				case self::opteditrbl:
+				case self::opteditrbr:
+					$t = explode("\n", $ot);
+					$to = array();
+					for ( $i = 0; $i < count($t); $i++ ) {
+						$l = trim(trim($t[$i]), "\r");
+						if ( $l == '' ) {
+							continue;
+						}
+						$l = array_map('trim', explode('@', $l));
+						// TODO: format checks
+						if ( (! isset($l[1])) || $l[1] == '' ) {
+							$l[1] = '127.0.0.2';
+						}
+						if ( (! isset($l[2])) || $l[2] == '' ) {
+							$l[2] = null;
+						}
+						$to[] = $l;
+					}
+					$t = is_array($oo) ? $oo : array();
+					if ( $to !== $t ) {
+						$a_out[$k] = $to;
+						$nupd++;
+					} else {
+						$a_out[$k] = $oo;
 					}
 					break;
 				// Checkboxes
@@ -1344,6 +1415,26 @@ class Spam_BLIP_class {
 		printf('<p><a href="#general">%s</a></p>%s', $t, "\n");
 	}
 
+	// callback: put html for placement field description
+	public function put_advanced_desc() {
+		$t = self::wt(__('Advanced options:', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+		if ( self::get_verbose_option() !== 'true' ) {
+			return;
+		}
+
+		$t = self::wt(__('"Active and inactive Blacklist domains"
+			can be edited in the text fields at right.
+			', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
+		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
+		$t = self::wt(__('Go back to top (General section).', 'spambl_l10n'));
+		printf('<p><a href="#general">%s</a></p>%s', $t, "\n");
+	}
+
+
 	// callback: put html install field description
 	public function put_inst_desc() {
 		$t = self::wt(__('Install options:', 'spambl_l10n'));
@@ -1385,11 +1476,116 @@ class Spam_BLIP_class {
 		$group = self::opt_group;
 		$c = $a[$opt] == 'true' ? "checked='CHECKED' " : "";
 
-		//echo "\n		<!-- {$opt} checkbox-->\n";
-
 		echo "		<label><input type='checkbox' id='{$opt}' ";
 		echo "name='{$group}[{$opt}]' value='true' {$c}/> ";
 		echo "{$label}</label><br />\n";
+	}
+	
+	// callback, put verbose section descriptions?
+	public function put_editrbl_opt($a) {
+		$gr = self::opt_group;
+		$ol = self::opteditrbl;
+		$or = self::opteditrbr;
+		$dl = self::get_editrbl_option();
+		$dr = self::get_editrbr_option();
+
+		if ( $dl === '' ) {
+			$dl = ChkBL_0_0_1::get_def_array();
+		}
+		if ( $dr === '' ) {
+			$dr = ChkBL_0_0_1::get_strict_array();
+		}
+
+		$t = array();
+		foreach ( $dl as $a ) {
+			$t[] = implode('@', $a);
+		}
+		$vl = self::ht(implode("\n", $t) . "\n");
+
+		$t = array();
+		foreach ( $dr as $a ) {
+			$t[] = implode('@', $a);
+		}
+		$vr = self::ht(implode("\n", $t) . "\n");
+	
+		// atts for textarea
+		$txh = 4;
+		$txw = 48;
+		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
+		$txatt .= ' inputmode="verbatim" wrap="off"';
+	
+		$aargs = array(
+			'txattl' => $txatt . ' placeholder="wanted.bl.example.net@127.0.0.2@0,=" name="' . "{$gr}[{$ol}]" . '"',
+			'txattr' => $txatt . ' placeholder="not.wanted.bl.example.net@127.0.0.32@3,&amp;" name="' . "{$gr}[{$or}]" . '"',
+			'txvall' => $vl,
+			'txvalr' => $vr,
+			// TRANSLATORS: these are labels above textarea elements
+			'ltxlb' => self::wt(__('Active RBL Domains:')),
+			'rtxlb' => self::wt(__('Inactive RBL Domains:')),
+			'ltxid' => $ol,
+			'rtxid' => $or,
+			// incr
+			'lbtid' => 'spblip_buttxpair_1_l',
+			'rbtid' => 'spblip_buttxpair_1_r',
+			// TRANSLATORS: these are buttons below textarea elements,
+			// effect is to move a line of text from one to the other;
+			// '<<' and '>>' should suggest movement left and right
+			'lbttx' => self::wt(__('Move right >>')),
+			'rbttx' => self::wt(__('<< Move left')),
+			'dbg_span' => 'spblip_debug_span1',
+			// JS control class name
+			'classname' => 'spblip_ctl_textpair',
+			// incr for each, up to 6, or add more in JS
+			'obj_key' => 'spblip_ctl_textpair_objmap.form_1'
+		);
+
+		$this->put_textarea_pair($aargs);
+	}
+
+	// callback helper, put textarea pair w/ button pair
+	// SEE calling code for $args
+	public function put_textarea_pair($args)
+	{
+		extract($args);
+	
+		$jsarg = sprintf('"%s","%s","%s","%s","%s"',
+			$ltxid, $rtxid, $lbtid, $rbtid, $dbg_span);
+	?>
+	
+		<table id="spblip_tbl1">
+			<tr>
+				<td align="left">
+					<label for="<?php echo $ltxid; ?>"><?php echo $ltxlb; ?></label>						
+				</td>
+				<td align="left">
+					<label for="<?php echo $rtxid; ?>"><?php echo $rtxlb; ?></label>						
+				</td>
+			</tr>
+			<tr>
+				<td align="right">
+					<textarea id="<?php echo $ltxid; ?>" <?php echo $txattl; ?> ><?php echo $txvall; ?></textarea>
+				</td>
+				<td align="left">
+					<textarea id="<?php echo $rtxid; ?>" <?php echo $txattr; ?> ><?php echo $txvalr; ?></textarea>
+				</td>
+			</tr>
+			<tr>
+				<td align="right">
+					<input type="button" id="<?php echo $lbtid; ?>" value="<?php echo $lbttx; ?>" onclick="false;" />
+				</td>
+				<td align="left">
+					<input type="button" id="<?php echo $rbtid; ?>" value="<?php echo $rbttx; ?>" onclick="false;" />
+				</td>
+			</tr>
+		</table>
+		<span id="<?php echo $dbg_span; ?>"></span>
+		<script type="text/javascript">
+			if ( <?php echo $obj_key; ?> === null ) {
+				<?php echo $obj_key; ?> = new <?php echo $classname; ?>(<?php echo $jsarg; ?>);
+			}
+		</script>
+	
+	<?php
 	}
 
 	// callback, put verbose section descriptions?
@@ -1680,19 +1876,27 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::optchkexst);
 	}
 
+	// get active RBL domains
+	public static function get_editrbl_option() {
+		return self::opt_by_name(self::opteditrbl);
+	}
+
+	// get inactive RBL domains
+	public static function get_editrbr_option() {
+		return self::opt_by_name(self::opteditrbr);
+	}
+
 	/**
 	 * core functionality
 	 */
 
 	public function bl_check_addr($addr) {
 		if ( $this->chkbl === null ) {
-			// TODO: add strict options
-			if ( false ) {
-				$this->chkbl =
-					new ChkBL_0_0_1(ChkBL_0_0_1::get_strict_array());
-			} else {
-				$this->chkbl = new ChkBL_0_0_1();
+			$da = self::get_editrbl_option();
+			if ( $da == '' || (! is_array($da)) || empty($da) ) {
+				$da = ChkBL_0_0_1::get_def_array();
 			}
+			$this->chkbl = new ChkBL_0_0_1($da, false);
 		}
 		
 		if ( ! $this->chkbl ) {
@@ -2008,7 +2212,7 @@ class Spam_BLIP_class {
 		}
 
 		// optional check in WP stored comments
-		if ( $this->chk_comments($addr, (int)$pretime) === true ) {
+		if ( $this->chk_comments($addr, $statype, (int)$pretime) ) {
 			// set the result; checked in various places
 			$this->rbl_result = array(true);
 			$this->dbl_result = array(true);
@@ -2100,53 +2304,46 @@ class Spam_BLIP_class {
 
 
 	// optionally check comments saved by WP for those marked
-	// as spam and having address $addr and having GMT >=
+	// as spam and having address $addr and having GMT >
 	// $tm - TTL option
-	protected function chk_comments($addr, $tm) {
+	protected function chk_comments($addr, $type, $tm) {
 		$opt = self::get_chkexist_option();
 		if ( $opt == 'false' ) {
 			return false;
 		}
 
 		global $wpdb;
-		$q = sprintf("SELECT %s FROM %s WHERE %s = '%s' AND %s = '%s'", 
-			'UNIX_TIMESTAMP(comment_date_gmt), comment_type',
-				$wpdb->comments,
+
+		$ttl = (int)self::get_ttldata_option();
+		if ( $ttl < 1 ) {
+			$ttl = (int)$tm;
+		}
+		$old = (int)$tm - $ttl;
+
+		// this format works with $wpdb->comments up to WP 3.6
+		$f = "%s FROM %s WHERE %s = '%s' AND %s = '%s' AND %s > %u";
+		$q = sprintf($f, 
+			'SELECT COUNT(*)', $wpdb->comments,
 			'comment_approved', 'spam',
-			'comment_author_IP', $addr
+			'comment_author_IP', $addr,
+			'UNIX_TIMESTAMP(comment_date_gmt)', $old
 		);
 		$r = $wpdb->get_results($q, ARRAY_A);
 
-		if ( is_array($r) && isset($r[0]) ) {
-			$ttl = (int)self::get_ttldata_option();
-			if ( $ttl < 1 ) {
-				$ttl = $tm;
+		if ( is_array($r) && (int)$r[0]['COUNT(*)'] > 0 ) {
+			if ( self::get_recdata_option() != 'false' ) {
+				$this->db_update_array(
+					$this->db_make_array(
+						$addr, 1, (int)$tm, $type
+					)
+				);
+				// maintain table
+				$this->db_tbl_maintain();
 			}
-			$old = $tm - $ttl;
+			self::dbglog('FOUND spam comment (' .
+				$r[0]['COUNT(*)'] . '), address ' . $addr);
 
-			foreach ( $r as $a ) {
-				if ( (int)$a['comment_date_gmt'] < $old ) {
-					continue;
-				}
-				// hit, not too old . . .
-				if ( self::get_recdata_option() != 'false' ) {
-					$ty = trim($a['comment_type']) == ''
-						? 'comments' : 'pings';
-					$this->db_update_array(
-						$this->db_make_array(
-							$addr, 1, (int)$tm, $ty
-						)
-					);
-					// maintain table
-					$this->db_tbl_maintain();
-					self::dbglog('FOUND spam comment, type "' .
-						$ty . '", address ' . $addr .
-						', from "' . $a['comment_date_gmt'] . ' GMT"'
-					);
-				}
-				// . . . one is all we need
-				return true;
-			}
+			return true;
 		}
 
 		return false;
@@ -2636,11 +2833,12 @@ EOQ;
 	// be made an option
 	// pass the actual max option in $mx
 	public static function db_get_max_pad($mx) {
-		if ( (int)$mx < 50 ) {
+		$mx = (int)$mx;
+		if ( $mx < 50 ) {
 			return 5;
 		}
-		if ( (int)$mx < 1000 ) {
-			return (int)$mx / 10;
+		if ( $mx < 1000 ) {
+			return $mx / 10;
 		}
 		return 100;
 	}
@@ -2658,14 +2856,10 @@ EOQ;
 		$r = false;
 
 		$this->db_lock_table();
-		if ( ! method_exists($wpdb, 'delete') ) {
-			// w/o delete method use query
-			$q = "DELETE * FROM {$tbl} WHERE address = '{$addr}'";
-			$r = $wpdb->get_results($q, ARRAY_N);
-		} else {
-			$wh = array('address' => $addr);
-			$r = $wpdb->delete($tbl, $wh, array('%s'));
-		}
+
+		$q = "DELETE * FROM {$tbl} WHERE address = '{$addr}'";
+		$r = $wpdb->get_results($q, ARRAY_N);
+
 		$this->db_unlock_table();
 
 		return $r;
