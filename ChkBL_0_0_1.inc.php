@@ -90,8 +90,15 @@ class ChkBL_0_0_1 {
 
 	protected $doms;      // from ctor arg, or ref to $defdom, or merge
 
-	public function __construct($domarray = null, $merge = true)
+	protected $errf;      // error message function: one string arg
+
+	protected $ngix;      // indices of bad domain args
+
+	public function __construct(
+		$domarray = null, $merge = true, $errfunc = 'error_log')
 	{
+		$this->errf = $errfunc;
+
 		if ( $domarray !== null ) {
 			if ( $merge ) {
 				$this->doms = array_merge($domarray, self::$defdom);
@@ -101,10 +108,17 @@ class ChkBL_0_0_1 {
 		} else {
 			$this->doms = &self::$defdom;
 		}
+		
+		// TODO intl., utf8 arg
+		$this->ngix = self::validate_dom_array($this->doms);
 	}
 	
 	protected function errmsg($str) {
-		error_log($str);
+		call_user_func($this->errf, $str);
+	}
+	
+	public function set_errmsg_func($errfunc = 'error_log') {
+		$this->errf = $errfunc;
 	}
 	
 	// reverse order of octets in an IPv4 dotted quad address
@@ -150,6 +164,131 @@ class ChkBL_0_0_1 {
 		return $this->doms;
 	}
 	
+	// see validate_dom_arg() below
+	// returns array of failure indices; empty array
+	// if all OK *or* nothing to check in $aa, so caller beware
+	public static function validate_dom_array($aa, $utf = false) {
+		$r = array();
+		if ( ! is_array($aa) ) {
+			return $r;
+		}
+		$c = count($aa);
+		if ( $c < 1 ) {
+			return $r;
+		}
+		for ( $i = 0; $i < $c; $i++ ) {
+			if ( self::validate_dom_arg($aa[$i], $utf) === false ) {
+				$r[] = $i;
+			}
+		}
+		return $r;
+	}
+
+	// validate a dom arg array as used by this class
+	// NOTE this is not currently suitable for intl. non-ascii
+	// domains: at least the code will need to convert name/labels
+	// to IDN/punycode before checking lengths (and this would
+	// need to be done before use too)
+	// PHP >= 5.3.0 has *module* providing idn_to_ascii() and
+	// idn_to_utf8(); but cannot rely on module availability, and
+	// also still trying to support php 5.2 for a while (must
+	// abandon that soon)
+	// consider references to utf8 FPO
+	// TODO: intl. (maybe not ever)
+	public static function validate_dom_arg($a, $utf = false) {
+		if ( ! is_array($a) ) {
+			return false;
+		}
+		$c = count($a);
+		if ( $c !== 3 ) {
+			return false;
+		}
+		
+		$d = $a[0];
+		$r = $a[1];
+		$t = $a[2];
+
+		$mxname = 63;
+		$maxall = 253;
+		$mxpart = 127;
+
+		// TODO: intl here
+		// (is mb_strlen in core, or module?)
+		if ( strlen($d) > $maxall ) {
+			return false;
+		}
+		$ta = explode('.', $d);
+		$tv = count($ta);
+		if ( $tv > $mxpart || $tv < 2 ) {
+			return false;
+		}
+		foreach ( $ta as $tv ) {
+			if ( strlen($t) > $mxname ) {
+				return false;
+			}
+		}
+
+		// The UTF-8 pattern is bogus; I haven't even looked at any
+		// rfc concerning intl. domain names; it's no more than a guess
+		// not to mention any dependency on locale setup on server that
+		// might not coincide with the user's expectations.
+		// Moreover IDN conversions are not handled, so allowing utf8
+		// is pointless -- consider references to utf8 FPO
+		$pasc = '/^(([[:alnum:]]([[:alnum:]-]*[[:alnum:]])?)+\.)+[[:alnum:]]([[:alnum:]-]*[[:alnum:]])?$/';
+		$putf = '/(*UTF8)^(([[:alnum:]]([[:alnum:]-]*[[:alnum:]])?)+\.)+[[:alnum:]]([[:alnum:]-]*[[:alnum:]])?$/';
+		$p = $utf ? $putf : $pasc;
+		if ( preg_match($p, $d) === false ) {
+			return false;
+		}
+
+		// simple check that return value part id in
+		// IP4 dotted quad form
+		if ( filter_var($r, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+			=== false ) {
+			return false;
+		}
+
+		// hard part: check optional return test code
+		if ( $t === null || trim($tv) === '' ) {
+			// this part is optional
+			return true;
+		}
+
+		$ta = explode(';', $t);
+		if ( count($ta) > 4 ) {
+			return false;
+		}
+
+		foreach ( $ta as $tv ) {
+			$tv = trim($tv);
+			// allow empty fields
+			if ( $tv === '' ) {
+				continue;
+			}
+			$tv = explode(',', $tv);
+			if ( count($tv) !== 2 ) {
+				return false;
+			}
+			switch ( trim($tv[0]) ) {
+				case '0': case '1': case '2': case '3':
+					break;
+				default:
+					return false;
+			}
+			switch ( trim($tv[1]) ) {
+				case '&': case '==': case '!= ':
+				case '<': case '>': case '<=': case '>=':
+				case 'I': case 'i':
+					break;
+				default:
+					return false;
+			}
+			// Good!
+		}
+
+		return true;
+	}
+	
 	// check lookup result, IPv4 dotted quad, against
 	// data in array $adom
 	// if $adom[2] is not null, it must be coded test instructions:
@@ -162,7 +301,7 @@ class ChkBL_0_0_1 {
 	// string, the default is "==", so the example might have been
 	// simply '3,&'
 	// ops are: '&', '==', '!=', '<', '>', '<=', '>=', and one
-	// spacial op: 'I' meaning "ignore" and always true
+	// spacial op: 'I' (or 'i') meaning "ignore" and always true
 	// there may be white-space for clarity
 	// bad arguments give false return
 	public function chk_rbl_result($addr, $adom) {
@@ -229,6 +368,7 @@ class ChkBL_0_0_1 {
 			$ic = (int)$c[$i];
 
 			switch ( $ops[$i] ) {
+				case 'i':
 				case 'I':  $bres = true;         break;
 				case '&':  $bres = ($iv & $ic);  break;
 				case '==': $bres = ($iv == $ic); break;
@@ -255,12 +395,16 @@ class ChkBL_0_0_1 {
 	// return false on error, or array[0] = RBL result
 	// array[1] = satisfied result check (true||false)
 	public function check_by_index($addr, $idx) {
-		$domarray = $this->get_dom_array();
-		$res = array();
+		if ( in_array($idx, $this->ngix) ) {
+			return false;
+		}
 
+		$domarray = $this->get_dom_array();
 		if ( ! isset($domarray[$idx]) ) {
 			return false;
 		}
+
+		$res = array();
 
 		$rip = self::mk_reversed($addr);
 		$a = &$domarray[$idx];
@@ -468,6 +612,7 @@ class IPReservedCheck_0_0_1 {
 		return false;
 	}
 
+	// arg not validated
 	public static function ip4_dots2int($addr)
 	{
 		$a = explode('.', $addr);

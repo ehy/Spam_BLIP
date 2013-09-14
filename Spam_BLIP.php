@@ -241,7 +241,9 @@ class Spam_BLIP_class {
 	protected static $Spam_BLIP_jsname = 'Spam_BLIP.js';
 	// Spam_BLIP_plugin program js path
 	protected $Spam_BLIP_js;
-	
+	// JS: name of class to control textare/button pairs
+	const js_textpair_ctl = 'spblip_ctl_textpair';
+
 	// hold an instance
 	private static $instance = null;
 
@@ -1116,7 +1118,7 @@ class Spam_BLIP_class {
 					$t = explode("\n", $ot);
 					$to = array();
 					for ( $i = 0; $i < count($t); $i++ ) {
-						$l = trim(trim($t[$i]), "\r");
+						$l = trim($t[$i]);
 						if ( $l == '' ) {
 							continue;
 						}
@@ -1127,6 +1129,9 @@ class Spam_BLIP_class {
 						}
 						if ( (! isset($l[2])) || $l[2] == '' ) {
 							$l[2] = null;
+						}
+						while ( count($l) > 3 ) {
+							array_pop($l);
 						}
 						$to[] = $l;
 					}
@@ -1481,69 +1486,8 @@ class Spam_BLIP_class {
 		echo "{$label}</label><br />\n";
 	}
 	
-	// callback, put verbose section descriptions?
-	public function put_editrbl_opt($a) {
-		$gr = self::opt_group;
-		$ol = self::opteditrbl;
-		$or = self::opteditrbr;
-		$dl = self::get_editrbl_option();
-		$dr = self::get_editrbr_option();
-
-		if ( $dl === '' ) {
-			$dl = ChkBL_0_0_1::get_def_array();
-		}
-		if ( $dr === '' ) {
-			$dr = ChkBL_0_0_1::get_strict_array();
-		}
-
-		$t = array();
-		foreach ( $dl as $a ) {
-			$t[] = implode('@', $a);
-		}
-		$vl = self::ht(implode("\n", $t) . "\n");
-
-		$t = array();
-		foreach ( $dr as $a ) {
-			$t[] = implode('@', $a);
-		}
-		$vr = self::ht(implode("\n", $t) . "\n");
-	
-		// atts for textarea
-		$txh = 4;
-		$txw = 48;
-		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
-		$txatt .= ' inputmode="verbatim" wrap="off"';
-	
-		$aargs = array(
-			'txattl' => $txatt . ' placeholder="wanted.bl.example.net@127.0.0.2@0,=" name="' . "{$gr}[{$ol}]" . '"',
-			'txattr' => $txatt . ' placeholder="not.wanted.bl.example.net@127.0.0.32@3,&amp;" name="' . "{$gr}[{$or}]" . '"',
-			'txvall' => $vl,
-			'txvalr' => $vr,
-			// TRANSLATORS: these are labels above textarea elements
-			'ltxlb' => self::wt(__('Active RBL Domains:')),
-			'rtxlb' => self::wt(__('Inactive RBL Domains:')),
-			'ltxid' => $ol,
-			'rtxid' => $or,
-			// incr
-			'lbtid' => 'spblip_buttxpair_1_l',
-			'rbtid' => 'spblip_buttxpair_1_r',
-			// TRANSLATORS: these are buttons below textarea elements,
-			// effect is to move a line of text from one to the other;
-			// '<<' and '>>' should suggest movement left and right
-			'lbttx' => self::wt(__('Move right >>')),
-			'rbttx' => self::wt(__('<< Move left')),
-			'dbg_span' => 'spblip_debug_span1',
-			// JS control class name
-			'classname' => 'spblip_ctl_textpair',
-			// incr for each, up to 6, or add more in JS
-			'obj_key' => 'spblip_ctl_textpair_objmap.form_1'
-		);
-
-		$this->put_textarea_pair($aargs);
-	}
-
 	// callback helper, put textarea pair w/ button pair
-	// SEE calling code for $args
+	// SEE calling code e.g., put_editrbl_opt($a), for $args
 	public function put_textarea_pair($args)
 	{
 		extract($args);
@@ -1552,7 +1496,7 @@ class Spam_BLIP_class {
 			$ltxid, $rtxid, $lbtid, $rbtid, $dbg_span);
 	?>
 	
-		<table id="spblip_tbl1">
+		<table id="spblip_tbl1"><tbody>
 			<tr>
 				<td align="left">
 					<label for="<?php echo $ltxid; ?>"><?php echo $ltxlb; ?></label>						
@@ -1577,7 +1521,7 @@ class Spam_BLIP_class {
 					<input type="button" id="<?php echo $rbtid; ?>" value="<?php echo $rbttx; ?>" onclick="false;" />
 				</td>
 			</tr>
-		</table>
+		</tbody></table>
 		<span id="<?php echo $dbg_span; ?>"></span>
 		<script type="text/javascript">
 			if ( <?php echo $obj_key; ?> === null ) {
@@ -1774,6 +1718,73 @@ class Spam_BLIP_class {
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
+	// callback, put textarea pair for RBL domains
+	public function put_editrbl_opt($a) {
+		$gr = self::opt_group;
+		$ol = self::opteditrbl;
+		$or = self::opteditrbr;
+		$dl = self::get_editrbl_option();
+		$dr = self::get_editrbr_option();
+
+		if ( $dl === '' || (! is_array($dl)) ) {
+			$dl = ChkBL_0_0_1::get_def_array();
+		}
+		if ( $dr === '' || (! is_array($dr)) ) {
+			$dr = ChkBL_0_0_1::get_strict_array();
+		}
+
+		$t = array();
+		foreach ( $dl as $a ) {
+			$t[] = implode('@', $a);
+		}
+		$vl = self::ht(implode("\n", $t) . "\n");
+
+		$t = array();
+		foreach ( $dr as $a ) {
+			$t[] = implode('@', $a);
+		}
+		$vr = self::ht(implode("\n", $t) . "\n");
+	
+		// atts for textarea
+		$txh = 4;
+		$txw = 48;
+		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
+		$txatt .= ' inputmode="verbatim" wrap="off"';
+	
+		$aargs = array(
+			// textarea element attributes; esp., name
+			'txattl' => $txatt . ' placeholder="wanted.bl.example.net@127.0.0.2@0,=" name="' . "{$gr}[{$ol}]" . '"',
+			'txattr' => $txatt . ' placeholder="not.wanted.bl.example.net@127.0.0.32@3,&amp;" name="' . "{$gr}[{$or}]" . '"',
+			// textarea initial values
+			'txvall' => $vl,
+			'txvalr' => $vr,
+			// TRANSLATORS: these are labels above textarea elements
+			// do not use html entities
+			'ltxlb' => self::wt(__('Active DNS Blacklists:')),
+			'rtxlb' => self::wt(__('Inactive DNS Blacklists:')),
+			// option (map) names as textarea IDs
+			'ltxid' => $ol,
+			'rtxid' => $or,
+			// incr for each, button IDs
+			'lbtid' => 'spblip_buttxpair_1_l',
+			'rbtid' => 'spblip_buttxpair_1_r',
+			// TRANSLATORS: these are buttons below textarea elements,
+			// effect is to move a line of text from one to the other;
+			// '<<' and '>>' should suggest movement left and right
+			// do not use html entities
+			'lbttx' => self::wt(__('Move line right >>')),
+			'rbttx' => self::wt(__('<< Move line left')),
+			// incr for each, debug span element
+			'dbg_span' => 'spblip_debug_span1',
+			// JS control class name - a plugin class const
+			'classname' => self::js_textpair_ctl,
+			// incr for each, up to 6, or add more in JS
+			'obj_key' => self::js_textpair_ctl . '_objmap.form_1'
+		);
+
+		$this->put_textarea_pair($aargs);
+	}
+
 	// callback, install section field: opt delete
 	public function put_del_opts($a) {
 		$tt = self::wt(__('Permanently delete settings (clean db)', 'spambl_l10n'));
@@ -1896,7 +1907,8 @@ class Spam_BLIP_class {
 			if ( $da == '' || (! is_array($da)) || empty($da) ) {
 				$da = ChkBL_0_0_1::get_def_array();
 			}
-			$this->chkbl = new ChkBL_0_0_1($da, false);
+			$err = array(__CLASS__, 'errlog');
+			$this->chkbl = new ChkBL_0_0_1($da, false, $err);
 		}
 		
 		if ( ! $this->chkbl ) {
