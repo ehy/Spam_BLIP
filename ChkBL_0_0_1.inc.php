@@ -237,7 +237,7 @@ class ChkBL_0_0_1 {
 		$pasc = '/^(([[:alnum:]]([[:alnum:]-]*[[:alnum:]])?)+\.)+[[:alnum:]]([[:alnum:]-]*[[:alnum:]])?$/';
 		$putf = '/(*UTF8)^(([[:alnum:]]([[:alnum:]-]*[[:alnum:]])?)+\.)+[[:alnum:]]([[:alnum:]-]*[[:alnum:]])?$/';
 		$p = $utf ? $putf : $pasc;
-		if ( preg_match($p, $d) === false ) {
+		if ( ! preg_match($p, $d) ) {
 			return false;
 		}
 

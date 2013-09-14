@@ -1138,15 +1138,15 @@ class Spam_BLIP_class {
 							// strip existing '!:'
 							if ( preg_match(
 								'/\!\:[[:space:]]*([^[:space:]].*)$/',
-								$l, $m) !== false ) {
-							        $l = $m[1];
+								$l[0], $m) ) {
+							        $l[0] = $m[1];
 							}
 							// mark check failure w/ '!:', user
 							// can fix it when they notice: the mark
 							// will cause a check failure in the
 							// allocated ChkBL_0_0_1 object and it
 							// will not try to use the entry
-							$l = '!: ' . $l;
+							$l[0] = '!: ' . $l[0];
 						}
 						$to[] = $l;
 					}
