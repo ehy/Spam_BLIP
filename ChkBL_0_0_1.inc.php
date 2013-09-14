@@ -396,6 +396,7 @@ class ChkBL_0_0_1 {
 	// array[1] = satisfied result check (true||false)
 	public function check_by_index($addr, $idx) {
 		if ( in_array($idx, $this->ngix) ) {
+			//$this->errmsg('BAD dom index: ' . $idx);
 			return false;
 		}
 

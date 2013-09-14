@@ -1133,6 +1133,21 @@ class Spam_BLIP_class {
 						while ( count($l) > 3 ) {
 							array_pop($l);
 						}
+						$chk = ChkBL_0_0_1::validate_dom_arg($l);
+						if ( $chk === false ) {
+							// strip existing '!:'
+							if ( preg_match(
+								'/\!\:[[:space:]]*([^[:space:]].*)$/',
+								$l, $m) !== false ) {
+							        $l = $m[1];
+							}
+							// mark check failure w/ '!:', user
+							// can fix it when they notice: the mark
+							// will cause a check failure in the
+							// allocated ChkBL_0_0_1 object and it
+							// will not try to use the entry
+							$l = '!: ' . $l;
+						}
 						$to[] = $l;
 					}
 					$t = is_array($oo) ? $oo : array();
