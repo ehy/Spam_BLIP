@@ -508,7 +508,7 @@ class Spam_BLIP_class {
 		$nf = 0;
 		$fields = array();
 		$fields[$nf++] = new $Cf(self::opteditrbl,
-				self::wt(__('Active and inactive Blacklist domains:', 'spambl_l10n')),
+				self::wt(__('Active and inactive blacklist domains:', 'spambl_l10n')),
 				self::opteditrbl,
 				$items[self::opteditrbl],
 				array($this, 'put_editrbl_opt'));
@@ -1132,11 +1132,11 @@ class Spam_BLIP_class {
 					$t = explode("\n", $ot);
 					$to = array();
 					for ( $i = 0; $i < count($t); $i++ ) {
-						$l = trim($t[$i]);
-						if ( $l == '' ) {
+						$ln = trim($t[$i]);
+						if ( $ln == '' ) {
 							continue;
 						}
-						$l = array_map('trim', explode('@', $l));
+						$l = array_map('trim', explode('@', $ln));
 						// TODO: format checks
 						if ( (! isset($l[1])) || $l[1] == '' ) {
 							$l[1] = '127.0.0.2';
@@ -1149,22 +1149,26 @@ class Spam_BLIP_class {
 						}
 						$chk = ChkBL_0_0_1::validate_dom_arg($l);
 						if ( $chk === false ) {
-							// strip existing '!:'
-							if ( preg_match(
-								'/\!\:[[:space:]]*([^[:space:]].*)$/',
-								$l[0], $m) ) {
-							        $l[0] = $m[1];
-							}
-							// mark check failure w/ '!:', user
-							// can fix it when they notice: the mark
-							// will cause a check failure in the
-							// allocated ChkBL_0_0_1 object and it
-							// will not try to use the entry
-							$l[0] = '!: ' . $l[0];
+							// record error for WP
+							$e = __('bad blacklist domain set: "%s"', 'swfput_l10n');
+							$e = sprintf($e, $ln);
+							self::errlog($e);
+							$t = __('Active and inactive blacklist domains option', 'swfput_l10n');
+							add_settings_error(self::wt($t),
+								sprintf('%s[%s]', self::opt_group, $k),
+								self::wt($e), 'error');
 							// error counter
 							$nerr++;
+							
+							// signal error post-loop
+							$t = false;
+							break;
 						}
 						$to[] = $l;
+					}
+					if ( $t === false ) {
+						$a_out[$k] = $oo;
+						break;
 					}
 					$t = is_array($oo) ? $oo : array();
 					if ( $to !== $t ) {
@@ -1459,7 +1463,7 @@ class Spam_BLIP_class {
 			return;
 		}
 
-		$t = self::wt(__('"Active and inactive Blacklist domains"
+		$t = self::wt(__('"Active and inactive blacklist domains"
 			can be edited in the text fields at right.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
@@ -2557,7 +2561,10 @@ class Spam_BLIP_class {
 	// maintain table: just set flag; act on shutdown hook
 	protected function db_tbl_maintain() {
 		// flag maintenance at shutdown
-		$this->do_db_maintain = true;
+		if ( self::get_recdata_option() != 'false' ||
+			 self::get_usedata_option() != 'false' ) {
+			$this->do_db_maintain = true;
+		}
 	}
 	
 	// maintain table: trim according to TTL and max rows options

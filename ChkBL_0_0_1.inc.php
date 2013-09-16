@@ -276,7 +276,7 @@ class ChkBL_0_0_1 {
 					return false;
 			}
 			switch ( trim($tv[1]) ) {
-				case '&': case '==': case '!= ':
+				case '&': case '==': case '!=':
 				case '<': case '>': case '<=': case '>=':
 				case 'I': case 'i':
 					break;
