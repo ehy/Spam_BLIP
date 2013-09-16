@@ -621,20 +621,34 @@ class Spam_BLIP_class {
 	public static function on_deactivate() {
 		$wreg = __CLASS__;
 		$name = plugin_basename(self::mk_pluginfile());
-		$arf = array($wreg, 'plugin_page_addlink');
-		remove_filter("plugin_action_links_$name", $arf);
+		$a = array($wreg, 'plugin_page_addlink');
+		remove_filter("plugin_action_links_$name", $a);
 
 		self::unregi_widget();
 
 		unregister_setting(self::opt_group, // option group
 			self::opt_group, // opt name; using group passes all to cb
 			array($wreg, 'validate_opts'));
+
+		// un-setup cron job for e.g, db table maintenance
+		$a = array($wreg, 'action_static_cron');
+		$aa = array($a, 'hourly');
+		wp_clear_scheduled_hook($a, $aa);
 	}
 
 	// activate setup
 	public static function on_activate() {
 		$wreg = __CLASS__;
-		add_action('widgets_init', array($wreg, 'regi_widget'), 1);
+		$a = array($wreg, 'regi_widget');
+		add_action('widgets_init', $a, 1);
+
+		// setup cron job for e.g, db table maintenance
+		$a = array($wreg, 'action_static_cron');
+		$aa = array($a, 'hourly');
+		if ( ! wp_next_scheduled($a, $aa) ) {
+			$tm = time();
+			wp_schedule_event($tm, $aa[1], $a, $aa);
+		}
 	}
 
 	// uninstall cleanup
@@ -1147,6 +1161,8 @@ class Spam_BLIP_class {
 							// allocated ChkBL_0_0_1 object and it
 							// will not try to use the entry
 							$l[0] = '!: ' . $l[0];
+							// error counter
+							$nerr++;
 						}
 						$to[] = $l;
 					}
@@ -1981,6 +1997,20 @@ class Spam_BLIP_class {
 		}
 	}
 
+	// action called from cron hook; 
+	public static function action_static_cron($args) {
+		$inst = null;
+
+		switch ( $args[1] ) {
+			case 'hourly':
+				$inst = self::get_instance(); // can call repeatedly
+				$inst->db_tbl_maintain();
+				break;
+			default:
+				break;
+		}
+	}
+
 	// add_action('pre_comment_on_post', $scf, 1);
 	// This action is called from the last 'else' in
 	// and if/else chain starting with a test of comments_open()
@@ -2225,7 +2255,6 @@ class Spam_BLIP_class {
 						)
 					);
 					// maintain table
-					$this->db_tbl_maintain();
 				}
 				
 				// optionally die
@@ -2284,8 +2313,6 @@ class Spam_BLIP_class {
 					$addr, 1, (int)$pretime, $statype
 				)
 			);
-			// maintain table
-			$this->db_tbl_maintain();
 		}
 
 		// optional hit logging
@@ -2364,8 +2391,6 @@ class Spam_BLIP_class {
 						$addr, 1, (int)$tm, $type
 					)
 				);
-				// maintain table
-				$this->db_tbl_maintain();
 			}
 			self::dbglog('FOUND spam comment (' .
 				$r[0]['COUNT(*)'] . '), address ' . $addr);

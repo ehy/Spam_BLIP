@@ -49,19 +49,26 @@ spblip_ctl_textpair.prototype = {
 	bt_r : null,
 	clk_btl : function () {
 		var ctl = this.spbl;
-		fr = ctl.tx_l;
-		to = ctl.tx_r;
-		return ctl.movcur(fr, to);
+		var fr = ctl.tx_l;
+		var to = ctl.tx_r;
+		var r = ctl.movcur(fr, to);
+		if ( r )
+			to.focus();
+		return r;
 	},
 	clk_btr : function () {
 		var ctl = this.spbl;
-		to = ctl.tx_l;
-		fr = ctl.tx_r;
-		return ctl.movcur(fr, to);
+		var to = ctl.tx_l;
+		var fr = ctl.tx_r;
+		var r = ctl.movcur(fr, to);
+		if ( r )
+			to.focus();
+		return r;
 	},
 	clk_tx : function () {
 		var ctl = this.spbl;
 		ctl.selcur(this);
+		this.focus();
 	},
 	movcur : function (fr, to) {
 		l = this.cutcur(fr);
