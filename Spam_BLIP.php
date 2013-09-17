@@ -170,7 +170,7 @@ class Spam_BLIP_class {
 	const data_vs_opt  = 'Spam_BLIP_plugin1_data_vers';
 
 	// verbose (helpful?) section descriptions?
-	const defverbose = 'true';
+	const defverbose = 'false';
 	// filter comments_open?
 	const defcommflt = 'true';
 	// filter pingss_open?
@@ -545,7 +545,6 @@ class Spam_BLIP_class {
 				array($this, 'put_inst_desc'));
 
 		// prepare admin page specific hooks per page. e.g.:
-		// (now set to false, but code remains for reference)
 		if ( false ) {
 			$suffix_hooks = array(
 				'admin_head' => array($this, 'admin_head'),
@@ -554,6 +553,7 @@ class Spam_BLIP_class {
 			);
 		} else {
 			$suffix_hooks = array(
+				'admin_head' => array($this, 'admin_head'),
 				'admin_print_scripts' => array($this, 'settings_js'),
 			);
 		}
@@ -579,6 +579,64 @@ class Spam_BLIP_class {
 		$this->opt = new $Co($page);
 	}
 	
+	public function admin_head() {
+		// get_current_screen() introduced in WP 3.1
+		// (thus spake codex)
+		// I have 3.0.2 to test with, and 3.3.1, nothing in between,
+		// so 3.3 will be used as minimum
+		global $wp_version;
+		$va = explode('.', $wp_version);
+		$v = (int)$va[0] << 8;
+		if ( count($va) > 1 ) {
+			$v += (int)$va[1];
+		}
+		$ok = $v >= ((3 << 8) + 3);
+
+		// TRANSLATORS: first '%s' is the label of a checkbox option,
+		// second '%s' is the button label 'Save Settings'
+		$t = self::wt(sprintf(
+			__('The <em>Spam BLIP</em> settings page includes
+			help for each section at its start. These texts may
+			be hidden or shown with the "%s"
+			option, which is the first option on this page.
+			</p><p>
+			When any change is made, the new settings must be
+			submitted with the "%s" button, near the end
+			of this page, to take effect.', 'spambl_l10n'),
+			__('Show verbose descriptions', 'spambl_l10n'),
+			__('Save Settings', 'spambl_l10n')
+		));
+
+		// TRANSLATORS: first '%s' is the the phrase
+		// 'For more information:'; using translation
+		// from default textdomain (WP core)
+		$t2 = self::wt(sprintf(
+			__('<p><strong>%s</strong></p<p>
+			Online help and tips, wordy pedantry, and more
+			can be found at the
+			<a href="http://agalena.nfshost.com/b1/" target="_blank">
+			Agalena site
+			</a>.
+			</p>', 'spambl_l10n'),
+			__('For more information:')
+		));
+
+		if ( $ok ) {
+			get_current_screen()->add_help_tab(array(
+				'id'      => 'overview',
+				'title'   => __('Overview'), // use transl. from core
+				//'title'   => __('Settings', 'spambl_l10n'),
+				'content' => $t
+				)
+			);
+	
+			get_current_screen()->set_help_sidebar($t2);
+		} else {
+			global $current_screen;
+			add_contextual_help($current_screen, $t . $t2);
+		}
+	}
+
 	public function settings_js() {
 		$jsfn = self::$Spam_BLIP_jsname;
 		$j = $this->Spam_BLIP_js;
@@ -1093,8 +1151,7 @@ class Spam_BLIP_class {
 							$e = __('bad TTL option: "%s"', 'swfput_l10n');
 							$e = sprintf($e, $ot);
 							self::errlog($e);
-							$t = __('TTL option', 'swfput_l10n');
-							add_settings_error(self::wt($t),
+							add_settings_error(self::wt($k),
 								sprintf('%s[%s]', self::opt_group, $k),
 								self::wt($e), 'error');
 							$a_out[$k] = $oo;
@@ -1127,8 +1184,7 @@ class Spam_BLIP_class {
 							$e = __('bad maximum: "%s"', 'swfput_l10n');
 							$e = sprintf($e, $ot);
 							self::errlog($e);
-							$t = __('Maximum records option', 'swfput_l10n');
-							add_settings_error(self::wt($t),
+							add_settings_error(self::wt($k),
 								sprintf('%s[%s]', self::opt_group, $k),
 								self::wt($e), 'error');
 							$a_out[$k] = $oo;
@@ -1163,8 +1219,7 @@ class Spam_BLIP_class {
 							$e = __('bad blacklist domain set: "%s"', 'swfput_l10n');
 							$e = sprintf($e, $ln);
 							self::errlog($e);
-							$t = __('Active and inactive blacklist domains option', 'swfput_l10n');
-							add_settings_error(self::wt($t),
+							add_settings_error(self::wt($k),
 								sprintf('%s[%s]', self::opt_group, $k),
 								self::wt($e), 'error');
 							// error counter
@@ -1204,9 +1259,10 @@ class Spam_BLIP_class {
 				case self::optdelopts:
 				case self::optdelstor:
 					if ( $ot != 'true' && $ot != 'false' ) {
-						$e = sprintf('bad option: %s[%s]', $k, $v);
+						$e = sprintf('bad checkbox option: %s[%s]',
+							$k, $v);
 						self::errlog($e);
-						add_settings_error('Spam_BLIP checkbox option',
+						add_settings_error(self::wt($k),
 							sprintf('%s[%s]', self::opt_group, $k),
 							self::wt($e),
 							'error');
@@ -1220,8 +1276,9 @@ class Spam_BLIP_class {
 				default:
 					$e = "funny key in validate opts: '" . $k . "'";
 					self::errlog($e);
-					add_settings_error('internal error, WP broken?',
-						sprintf('%s[%s]', self::opt_group, ''),
+					add_settings_error(self::wt($k),
+						sprintf('%s[%s]',
+							self::opt_group, self::ht($k)),
 						self::wt($e),
 						'error');
 					$nerr++;
@@ -1235,8 +1292,9 @@ class Spam_BLIP_class {
 				sprintf(_n('One (%d) setting updated',
 					'Some settings (%d) updated',
 					$nupd, 'swfput_l10n'), $nupd);
+			$type = $nerr == 0 ? 'updated' : 'updated error';
 			add_settings_error(self::opt_group, self::opt_group,
-				self::wt($str), 'updated');
+				self::wt($str), $type);
 		}
 		
 		return $a_out;
@@ -1517,7 +1575,9 @@ class Spam_BLIP_class {
 			"<code>!&amp;</code>" (not bitwise AND),
 			or
 			"<code>I</code>" (character "i", case insensitive, meaning
-			"ignore": no comparison at this index). The default
+			"ignore": no comparison at this index). The fields may
+			contain whitespace for clarity.
+			The default
 			for any field that is not present is "==", and so if
 			the whole third part is absent then a DNS lookup
 			return is checked for complete equality with the value
