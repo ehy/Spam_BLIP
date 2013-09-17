@@ -276,7 +276,7 @@ class ChkBL_0_0_1 {
 					return false;
 			}
 			switch ( trim($tv[1]) ) {
-				case '&': case '==': case '!=':
+				case '&': case '!&': case '==': case '!=':
 				case '<': case '>': case '<=': case '>=':
 				case 'I': case 'i':
 					break;
@@ -300,7 +300,7 @@ class ChkBL_0_0_1 {
 	// all 4 octets need not be present in the encoded test
 	// string, the default is "==", so the example might have been
 	// simply '3,&'
-	// ops are: '&', '==', '!=', '<', '>', '<=', '>=', and one
+	// ops are: '&'. '!&', '==', '!=', '<', '>', '<=', '>=', and one
 	// spacial op: 'I' (or 'i') meaning "ignore" and always true
 	// there may be white-space for clarity
 	// bad arguments give false return
@@ -371,6 +371,7 @@ class ChkBL_0_0_1 {
 				case 'i':
 				case 'I':  $bres = true;         break;
 				case '&':  $bres = ($iv & $ic);  break;
+				case '!&': $bres = !($iv & $ic); break;
 				case '==': $bres = ($iv == $ic); break;
 				case '!=': $bres = ($iv != $ic); break;
 				case '<':  $bres = ($iv < $ic);  break;

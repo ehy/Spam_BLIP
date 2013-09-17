@@ -1473,8 +1473,55 @@ class Spam_BLIP_class {
 			return;
 		}
 
-		$t = self::wt(__('"Active and inactive blacklist domains"
-			can be edited in the text fields at right.
+		$t = self::wt(__('The "Active and inactive blacklist domains"
+			text fields can be used to edit the DNS blacklist domains
+			and the interpretation of the values they return. The left
+			text field is for active domains; those that will be
+			checked for a comment posting address. The right text field
+			is for domains considered inactive; they are stored but
+			not used. Each domain entry occupies one line in the fields,
+			and lines can be moved between the active and inactive
+			fields with the buttons just below the fields. Of course,
+			new domains can be added (along with rules for evaluating
+			their return values); and domains may be deleted, although
+			it might be better to leave domains in the inactive field
+			unless it is certain that they are defunct or unsuitable.
+			', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('Each "Active and inactive blacklist domains"
+			entry line consists of three parts separated by a \'@\'
+			character. Only the first part is required. The first
+			part is the domain name for the DNS lookup.
+			The second part is a value to compare with the return
+			of a DNS lookup that succeeds; if this part is not
+			present the default is "127.0.0.2". It must be in the
+			form of an IP4 dotted quad address.
+			The third part is a set of operations for
+			comparing the DNS lookup return with the value in
+			the second part. If present, the third part must
+			consist of one or more fields separated by a \';\'
+			character, and each such field must have two parts
+			separated by a \',\' character. The first part of
+			each field is in index into the dotted quad form,
+			starting at zero (0) and preceeding from left to
+			right. The second part of each field is a comparison
+			operator, which may be <em>one</em> of
+			"<code>==</code>" (is equal to),
+			"<code>!=</code>" (not equal to),
+			"<code>&lt;</code>" (numerically less than),
+			"<code>&gt;</code>" (greater than),
+			"<code>&lt;=</code>" (less than or equal to),
+			"<code>&gt;=</code>" (greater than or equal to),
+			"<code>&amp;</code>" (bitwise AND),
+			"<code>!&amp;</code>" (not bitwise AND),
+			or
+			"<code>I</code>" (character "i", case insensitive, meaning
+			"ignore": no comparison at this index). The default
+			for any field that is not present is "==", and so if
+			the whole third part is absent then a DNS lookup
+			return is checked for complete equality with the value
+			of the second part.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
@@ -2170,8 +2217,8 @@ class Spam_BLIP_class {
 	// internal BL check for use by e.g., filters
 	// Returns false for a BL hit, else returns arg $def
 	public function do_db_bl_check($def, $statype, $rbl = true) {
+		// 1st, get address, check if it is useable
 		$addr = self::get_conn_addr();
-
 		if ( $addr === false ) {
 			$addr = $_SERVER["REMOTE_ADDR"];
 			$fmt = self::check_ip6_address($addr) ?
@@ -2200,104 +2247,66 @@ class Spam_BLIP_class {
 				$fmt = __('Got %1$s IPv4 address "%2$s" in "REMOTE_ADDR".', 'spambl_l10n');
 				$ret = sprintf($fmt, $ret, $addr);
 				self::errlog($ret);
-				// TODO: email admin
+				// TODO: email admin (well, probably not)
 				$this->handle_REMOTE_ADDR_error($ret);
 			}
-			// Well, can't continue; set result false
+			// can't continue; set result false
 			$this->rbl_result = array(false);
 			return $def;
 		}
 
+		$ret = false; // redundant, safe
+
 		$pretime = self::best_time();
 
 		// optional check in WP stored comments
-		if ( $this->chk_comments($addr, $statype, (int)$pretime) ) {
-			// set the result; checked in various places
-			$this->rbl_result = array(true);
-			// flag this like db check w a hit
-			$this->dbl_result = array(true);
-			return false;
+		if ( ! $ret &&
+			$this->chk_comments($addr, $statype, (int)$pretime) ) {
+			$ret = true;
 		}
 
 		// option to whitelist addresses that TOR lists as exit nodes
-		if ( $this->tor_non_optional_whitelist($addr, $rbl) ) {
+		// or that have been previously checked and were not hits (non)
+		// this is allowed a pass only if the comment check above
+		// did not hit; this way an addr whiltelisted here previously
+		// is not let past again if user marked the comment as spam --
+		// also the check above changes the 'lasttype' in our table
+		// to the $stattype arg ('comments' or 'pings')
+		if ( ! $ret &&
+			$this->tor_nonhit_opt_whitelist($addr, $rbl) ) {
+			// set the result; checked in various places
+			$this->rbl_result = array(false);
 			// flag this like db check w/o a hit
 			$this->dbl_result = array(false);
 			return $def;
 		}
 		
-		//$pretime = self::best_time();
-
 		// optional data store check
-		if ( self::get_usedata_option() != 'false' ) {
-			$d = $this->db_get_address($addr);
-			$posttime = self::best_time();
-
-			$hit = false;
-			if ( is_array($d) ) {
-				if ( $d['lasttype'] === 'comments' ||
-					 $d['lasttype'] === 'pings' ) {
-					$hit = true;
-				}
-			}
-
-			if ( $hit ) {
-				// optional hit logging
-				if ( self::get_hitlog_option() != 'false' ) {
-					// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
-					$ptxt = __('pings', 'spambl_l10n');
-					// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
-					$ctxt = __('comments', 'spambl_l10n');
-		
-					$dtxt = $statype === 'pings' ? $ptxt :
-						($statype === 'comments' ? $ctxt : $statype);
-		
-					$fmt =
-					// TRANSLATORS: %1$s is type "comments" or "pings"
-					// %2$s is IP4 address dotted quad
-					// %3$s is first seen date; in UTC, formatted
-					//      in *site host* machine's locale
-					// %4$s is last seen date; as above
-					// %5$u is integer number of times seen (hitcount)
-					// %6$f is is time (float) used in database check
-					_n('%1$s denied for address %2$s, first seen %3$s, last seen %4$s, previously seen %5$u time; (db time %6$f)',
-					   '%1$s denied for address %2$s, first seen %3$s, last seen %4$s, previously seen %5$u times; (db time %6$f)',
-					   (int)$d['hitcount'], 'spambl_l10n');
-					$fmt = sprintf($fmt, $dtxt, $addr,
-						gmdate(DATE_RFC2822, (int)$d['seeninit']),
-						gmdate(DATE_RFC2822, (int)$d['seenlast']),
-						(int)$d['hitcount'], $posttime - $pretime);
-					self::errlog($fmt);
-				}		
-
-				// optionally record stats
-				if ( self::get_recdata_option() != 'false' ) {
-					$this->db_update_array(
-						$this->db_make_array(
-							$addr, 1, (int)$pretime, $statype
-						)
-					);
-					// maintain table
-				}
-				
-				// optionally die
-				self::hit_optional_bailout($addr, $statype);
-
-				// set the result; checked in various places
-				$this->rbl_result = array(true);
-				$this->dbl_result = array(true);
-				return false;
-			}
+		if (  ! $ret &&
+			$this-chk_db_4_hit($addr, $statype, (int)$pretime) ) {
+			$ret = true;
 		}
 
-		// if not $rbl only the optional data store check is
-		// wanted, for routines that should not wait on DNS
+		// got hit above?
+		if ( $ret ) {
+			// set the result; checked in various places
+			$this->rbl_result = array(true);
+			// flag this like db check w a hit
+			$this->dbl_result = array(true);
+			// optionally die
+			self::hit_optional_bailout($addr, $statype);
+			// Just say NO! (to Nancy)
+			return false;
+		}
+
+		// if $rbl not true, only the checks above are
+		// wanted, for calls that should not wait on DNS
 		if ( $rbl !== true ) {
 			$this->dbl_result = array(false);
 			return $def;
 		}
 
-		// time again, in case last block was slow,
+		// time again, in case stuff above was slow,
 		// and do lookup
 		$pretime = self::best_time();
 		$ret = $this->bl_check_addr($addr);
@@ -2372,6 +2381,69 @@ class Spam_BLIP_class {
 	}
 
 
+	// optionally check data store for address
+	protected function chk_db_4_hit($addr, $type, $tm = null) {
+		if ( self::get_usedata_option() == 'false' ) {
+			return false;
+		}
+
+		$pretime = $tm ? $tm : self::best_time();
+		$d = $this->db_get_address($addr);
+		$posttime = self::best_time();
+	
+		$hit = false;
+		if ( is_array($d) ) {
+			if ( $d['lasttype'] === 'comments' ||
+				 $d['lasttype'] === 'pings' ) {
+				$hit = true;
+			}
+		}
+
+		// got it?
+		if ( $hit === false ) {
+			return false;
+		}
+
+		// optional hit logging
+		if ( self::get_hitlog_option() != 'false' ) {
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ptxt = __('pings', 'spambl_l10n');
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ctxt = __('comments', 'spambl_l10n');
+
+			$dtxt = $statype === 'pings' ? $ptxt :
+				($statype === 'comments' ? $ctxt : $statype);
+
+			$fmt =
+			// TRANSLATORS: %1$s is type "comments" or "pings"
+			// %2$s is IP4 address dotted quad
+			// %3$s is first seen date; in UTC, formatted
+			//      in *site host* machine's locale
+			// %4$s is last seen date; as above
+			// %5$u is integer number of times seen (hitcount)
+			// %6$f is is time (float) used in database check
+			_n('%1$s denied for address %2$s, first seen %3$s, last seen %4$s, previously seen %5$u time; (db time %6$f)',
+			   '%1$s denied for address %2$s, first seen %3$s, last seen %4$s, previously seen %5$u times; (db time %6$f)',
+			   (int)$d['hitcount'], 'spambl_l10n');
+			$fmt = sprintf($fmt, $dtxt, $addr,
+				gmdate(DATE_RFC2822, (int)$d['seeninit']),
+				gmdate(DATE_RFC2822, (int)$d['seenlast']),
+				(int)$d['hitcount'], $posttime - $pretime);
+			self::errlog($fmt);
+		}		
+
+		// optionally record stats
+		if ( self::get_recdata_option() != 'false' ) {
+			$this->db_update_array(
+				$this->db_make_array(
+					$addr, 1, (int)$pretime, $statype
+				)
+			);
+		}
+		
+		return true;
+	}
+
 	// optionally check comments saved by WP for those marked
 	// as spam and having address $addr and having GMT >
 	// $tm - TTL option
@@ -2419,7 +2491,9 @@ class Spam_BLIP_class {
 	// if option to whitelist TOR is set and address is *found*
 	// to be a TOR exit node (there are false negatives), then
 	// return true; else return false
-	protected function tor_non_optional_whitelist($addr, $dns = true) {
+	// Also, coopt this proc for the optional recording/checking
+	// of non-hits
+	protected function tor_nonhit_opt_whitelist($addr, $dns = true) {
 		// if opt
 		$toro = self::get_torwhite_option();
 		$nono = self::get_rec_non_option();
@@ -2458,8 +2532,6 @@ class Spam_BLIP_class {
 					);
 				}
 			
-				// mark for this invocation
-				$this->rbl_result = array(false);
 				return true;
 			}
 		}
@@ -2499,8 +2571,6 @@ class Spam_BLIP_class {
 				);
 			}
 			
-			// mark for this invocation
-			$this->rbl_result = array(false);
 			return true;
 		}
 		
