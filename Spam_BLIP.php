@@ -621,8 +621,8 @@ class Spam_BLIP_class {
 	public static function on_deactivate() {
 		$wreg = __CLASS__;
 		$name = plugin_basename(self::mk_pluginfile());
-		$a = array($wreg, 'plugin_page_addlink');
-		remove_filter("plugin_action_links_$name", $a);
+		$aa = array($wreg, 'plugin_page_addlink');
+		remove_filter("plugin_action_links_$name", $aa);
 
 		self::unregi_widget();
 
@@ -631,23 +631,22 @@ class Spam_BLIP_class {
 			array($wreg, 'validate_opts'));
 
 		// un-setup cron job for e.g, db table maintenance
-		$a = array($wreg, 'action_static_cron');
-		$aa = array($a, 'hourly');
-		wp_clear_scheduled_hook($a, $aa);
+		$aa = array('hourly');
+		wp_clear_scheduled_hook('Spam_BLIP_plugin_cron', $aa);
 	}
 
 	// activate setup
 	public static function on_activate() {
 		$wreg = __CLASS__;
-		$a = array($wreg, 'regi_widget');
-		add_action('widgets_init', $a, 1);
+		$aa = array($wreg, 'regi_widget');
+		add_action('widgets_init', $aa, 1);
 
 		// setup cron job for e.g, db table maintenance
-		$a = array($wreg, 'action_static_cron');
-		$aa = array($a, 'hourly');
-		if ( ! wp_next_scheduled($a, $aa) ) {
+		$aa = array('hourly');
+		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
 			$tm = time();
-			wp_schedule_event($tm, $aa[1], $a, $aa);
+			wp_schedule_event(
+				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
 		}
 	}
 
@@ -768,6 +767,17 @@ class Spam_BLIP_class {
 		// callback, so it's invoked even after wp_die()
 		$aa = array($this, 'action_shutdown');
 		add_action('shutdown', $aa, 200);
+
+		// setup cron job for e.g, db table maintenance
+		$aa = array('hourly');
+		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
+			$tm = time();
+			wp_schedule_event(
+				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
+		}
+		// action for cron callback
+		$aa = array($cl, 'action_static_cron');
+		add_action('Spam_BLIP_plugin_cron', $aa);
 	}
 
 	// add_filter('tables_to_repair', $scf, 1);
@@ -2002,10 +2012,8 @@ class Spam_BLIP_class {
 	}
 
 	// action called from cron hook; 
-	public static function action_static_cron($args) {
-		$inst = null;
-
-		switch ( $args[1] ) {
+	public static function action_static_cron($what) {
+		switch ( $what ) {
 			case 'hourly':
 				$inst = self::get_instance(); // can call repeatedly
 				$inst->db_tbl_maintain();
@@ -2200,6 +2208,17 @@ class Spam_BLIP_class {
 			return $def;
 		}
 
+		$pretime = self::best_time();
+
+		// optional check in WP stored comments
+		if ( $this->chk_comments($addr, $statype, (int)$pretime) ) {
+			// set the result; checked in various places
+			$this->rbl_result = array(true);
+			// flag this like db check w a hit
+			$this->dbl_result = array(true);
+			return false;
+		}
+
 		// option to whitelist addresses that TOR lists as exit nodes
 		if ( $this->tor_non_optional_whitelist($addr, $rbl) ) {
 			// flag this like db check w/o a hit
@@ -2207,7 +2226,7 @@ class Spam_BLIP_class {
 			return $def;
 		}
 		
-		$pretime = self::best_time();
+		//$pretime = self::best_time();
 
 		// optional data store check
 		if ( self::get_usedata_option() != 'false' ) {
@@ -2269,14 +2288,6 @@ class Spam_BLIP_class {
 				$this->dbl_result = array(true);
 				return false;
 			}
-		}
-
-		// optional check in WP stored comments
-		if ( $this->chk_comments($addr, $statype, (int)$pretime) ) {
-			// set the result; checked in various places
-			$this->rbl_result = array(true);
-			$this->dbl_result = array(true);
-			return false;
 		}
 
 		// if not $rbl only the optional data store check is
