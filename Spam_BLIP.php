@@ -2283,7 +2283,7 @@ class Spam_BLIP_class {
 		
 		// optional data store check
 		if (  ! $ret &&
-			$this-chk_db_4_hit($addr, $statype, (int)$pretime) ) {
+			$this->chk_db_4_hit($addr, $statype, (int)$pretime) ) {
 			$ret = true;
 		}
 
