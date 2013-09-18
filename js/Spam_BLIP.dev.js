@@ -17,6 +17,38 @@
 
 /**
  * For option/settings page of Spam_BLIP plugin
+ * Controller for 'Screen Options'
+ */
+var spblip_ctl_screenopt = function (id_chk) {
+	this.chk = document.getElementById(id_chk);
+	this.chk.spbl = this;
+	this.chk.addEventListener('click', this.clk, false);
+};
+spblip_ctl_screenopt.prototype = {
+	chk : null,
+	all : {},
+	add : function (id) {
+		this.all[id] = document.getElementById(id);
+	},
+	tog : function (ch) {
+		for ( var k in this.all ) {
+			this.all[k].hidden = ch;
+		}
+	},
+	clk : function () {
+		this.spbl.tog(this.checked ? false : true);
+		return false;
+	}
+};
+var spblip_obj_screenopt = {};
+function addto_spblip_obj_screenopt(id, target) {
+	if ( spblip_obj_screenopt[id] == undefined )
+		spblip_obj_screenopt[id] = new spblip_ctl_screenopt(id);
+	spblip_obj_screenopt[id].add(target);
+};
+
+/**
+ * For option/settings page of Spam_BLIP plugin
  * Transfer whole lines from one textarea to another,
  * in response to one of two buttons (actually, any elements
  * with a click event)

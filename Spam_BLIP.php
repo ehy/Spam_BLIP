@@ -170,7 +170,7 @@ class Spam_BLIP_class {
 	const data_vs_opt  = 'Spam_BLIP_plugin1_data_vers';
 
 	// verbose (helpful?) section descriptions?
-	const defverbose = 'false';
+	const defverbose = 'true';
 	// filter comments_open?
 	const defcommflt = 'true';
 	// filter pingss_open?
@@ -578,7 +578,25 @@ class Spam_BLIP_class {
 		$Co = self::mk_aclv('Options');
 		$this->opt = new $Co($page);
 	}
-	
+
+	// filter for wp-admin/includes/screen.php get_column_headers()
+	// to set text for Screen Options column
+	public function screen_options_columns($a) {
+		if ( ! is_array($a) ) {
+			$a = array();
+		}
+		// checkbox id will 'verbose_show-hide'
+		$a['verbose_show'] =
+		__('Per section verbose introduction', 'spambl_l10n');
+		return $a;
+	}
+
+	// filter for wp-admin/includes/screen.php show_screen_options()
+	// to return true and enable the menu
+	public function screen_options_show($a) {
+		return true;
+	}
+
 	public function admin_head() {
 		// get_current_screen() introduced in WP 3.1
 		// (thus spake codex)
@@ -595,14 +613,15 @@ class Spam_BLIP_class {
 		// TRANSLATORS: first '%s' is the label of a checkbox option,
 		// second '%s' is the button label 'Save Settings'
 		$t = self::wt(sprintf(
-			__('The <em>Spam BLIP</em> settings page includes
+			__('<p>The <em>Spam BLIP</em> settings page includes
 			help for each section at its start. These texts may
 			be hidden or shown with the "%s"
 			option, which is the first option on this page.
 			</p><p>
 			When any change is made, the new settings must be
 			submitted with the "%s" button, near the end
-			of this page, to take effect.', 'spambl_l10n'),
+			of this page, to take effect.
+			</p>', 'spambl_l10n'),
 			__('Show verbose descriptions', 'spambl_l10n'),
 			__('Save Settings', 'spambl_l10n')
 		));
@@ -620,17 +639,25 @@ class Spam_BLIP_class {
 			</p>', 'spambl_l10n'),
 			__('For more information:')
 		));
+	
+		if ( self::get_verbose_option() == 'true' ) {
+			$h = 'manage_' . $this->opt->get_page_suffix() . '_columns';
+			add_filter($h, array($this, 'screen_options_columns'));
+			$h = 'screen_options_show_screen';
+			add_filter($h, array($this, 'screen_options_show'), 200);
+		}
 
 		if ( $ok ) {
-			get_current_screen()->add_help_tab(array(
+			$scr = get_current_screen();
+			$scr->add_help_tab(array(
 				'id'      => 'overview',
 				'title'   => __('Overview'), // use transl. from core
-				//'title'   => __('Settings', 'spambl_l10n'),
 				'content' => $t
+				// content may be a callback
 				)
 			);
 	
-			get_current_screen()->set_help_sidebar($t2);
+			$scr->set_help_sidebar($t2);
 		} else {
 			global $current_screen;
 			add_contextual_help($current_screen, $t . $t2);
@@ -1118,7 +1145,7 @@ class Spam_BLIP_class {
 		foreach ( $opts as $k => $v ) {
 			if ( ! array_key_exists($k, $a_orig) ) {
 				// this happens for the IDs of extra form items
-				// in use, such as self::optttldata . '_text'
+				// in use, if not associated with an option
 				continue;
 			}
 			$ot = trim($v);
@@ -1264,8 +1291,7 @@ class Spam_BLIP_class {
 						self::errlog($e);
 						add_settings_error(self::wt($k),
 							sprintf('%s[%s]', self::opt_group, $k),
-							self::wt($e),
-							'error');
+							self::wt($e), 'error');
 						$a_out[$k] = $oo;
 						$nerr++;
 					} else {
@@ -1277,10 +1303,9 @@ class Spam_BLIP_class {
 					$e = "funny key in validate opts: '" . $k . "'";
 					self::errlog($e);
 					add_settings_error(self::wt($k),
-						sprintf('%s[%s]',
+						sprintf('ERR_%s[%s]',
 							self::opt_group, self::ht($k)),
-						self::wt($e),
-						'error');
+						self::wt($e), 'error');
 					$nerr++;
 			}
 		}
@@ -1306,11 +1331,15 @@ class Spam_BLIP_class {
 	
 	// callback: put html for placement field description
 	public function put_general_desc() {
-		$t = self::wt(__('General Spam_BLIP plugin options:', 'spambl_l10n'));
-		printf('<p>%s</p>%s', $t, "\n");
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
 		}
+
+		$did = 'Spam_BLIP_General_Desc';
+		echo '<div id="' . $did . '">';
+
+		$t = self::wt(__('Introduction:', 'spambl_l10n'));
+		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
 		$t = self::wt(__('The verbose option selects whether
 			verbose descriptions
@@ -1365,15 +1394,19 @@ class Spam_BLIP_class {
 			The default is true.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
+		echo '</div>';
+		?>
+		<script>
+		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		</script>
+		<?php
+
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 	}
 
 	// callback: store and use data section
 	public function put_datastore_desc() {
-		$t = self::wt(__('Enable, disable, configure data store:', 'spambl_l10n'));
-		printf('<p>%s</p>%s', $t, "\n");
-
 		$cnt = $this->db_get_rowcount();
 		if ( $cnt ) {
 			$t = self::wt(
@@ -1387,6 +1420,12 @@ class Spam_BLIP_class {
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
 		}
+
+		$did = 'Spam_BLIP_Datastore_Desc';
+		echo '<div id="' . $did . '">';
+
+		$t = self::wt(__('Introduction:', 'spambl_l10n'));
+		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
 		$t = self::wt(__('These options enable or disable
 			the storage of blacklist lookup results in the
@@ -1444,6 +1483,13 @@ class Spam_BLIP_class {
 			The default is false.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
+		echo '</div>';
+		?>
+		<script>
+		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		</script>
+		<?php
+
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 		$t = self::wt(__('Go back to top (General section).', 'spambl_l10n'));
@@ -1452,11 +1498,15 @@ class Spam_BLIP_class {
 
 	// callback: put html for placement field description
 	public function put_misc_desc() {
-		$t = self::wt(__('Miscellaneous options:', 'spambl_l10n'));
-		printf('<p>%s</p>%s', $t, "\n");
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
 		}
+
+		$did = 'Spam_BLIP_Misc_Desc';
+		echo '<div id="' . $did . '">';
+
+		$t = self::wt(__('Introduction:', 'spambl_l10n'));
+		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
 		$t = self::wt(__('The "Use the included widget" option enables
 			whether the multi-widget included with the plugin is
@@ -1517,6 +1567,13 @@ class Spam_BLIP_class {
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
+		echo '</div>';
+		?>
+		<script>
+		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		</script>
+		<?php
+
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 		$t = self::wt(__('Go back to top (General section).', 'spambl_l10n'));
@@ -1525,11 +1582,15 @@ class Spam_BLIP_class {
 
 	// callback: put html for placement field description
 	public function put_advanced_desc() {
-		$t = self::wt(__('Advanced options:', 'spambl_l10n'));
-		printf('<p>%s</p>%s', $t, "\n");
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
 		}
+
+		$did = 'Spam_BLIP_Advanced_Desc';
+		echo '<div id="' . $did . '">';
+
+		$t = self::wt(__('Introduction:', 'spambl_l10n'));
+		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
 		$t = self::wt(__('The "Active and inactive blacklist domains"
 			text fields can be used to edit the DNS blacklist domains
@@ -1585,6 +1646,13 @@ class Spam_BLIP_class {
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
+		echo '</div>';
+		?>
+		<script>
+		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		</script>
+		<?php
+
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 		$t = self::wt(__('Go back to top (General section).', 'spambl_l10n'));
@@ -1594,11 +1662,15 @@ class Spam_BLIP_class {
 
 	// callback: put html install field description
 	public function put_inst_desc() {
-		$t = self::wt(__('Install options:', 'spambl_l10n'));
-		printf('<p>%s</p>%s', $t, "\n");
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
 		}
+
+		$did = 'Spam_BLIP_Install_Desc';
+		echo '<div id="' . $did . '">';
+
+		$t = self::wt(__('Introduction:', 'spambl_l10n'));
+		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
 		$t = self::wt(__('This section includes optional
 			features for plugin install or uninstall. Currently,
@@ -1617,6 +1689,13 @@ class Spam_BLIP_class {
 			one may be deleted while the other is saved.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
+
+		echo '</div>';
+		?>
+		<script>
+		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		</script>
+		<?php
 
 		$t = self::wt(__('Go forward to save button.', 'spambl_l10n'));
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
