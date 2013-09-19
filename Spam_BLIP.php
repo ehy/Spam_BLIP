@@ -80,22 +80,22 @@ Spam_BLIP_plugin_paranoid_require_class('ChkBL_0_0_1');
  * to a $var; 5.2 *cannot* call class methods, static or
  * not, through any alias
  */
-if ( ! function_exists( 'Spam_BLIP_plugin_php52_htmlent' ) ) :
-function Spam_BLIP_plugin_php52_htmlent ($text, $cset = null)
+if ( ! function_exists( 'Spam_BLIP_php52_htmlent' ) ) :
+function Spam_BLIP_php52_htmlent ($text, $cset = null)
 {
 	// try to use get_option('blog_charset') only once;
 	// it's not cheap enough even with WP's cache for
 	// the number of times this might be called
-	global $Spam_BLIP_blog_charset;
-	if ( ! isset($Spam_BLIP_blog_charset) ) {
-		$Spam_BLIP_blog_charset = get_option('blog_charset');
-		if ( ! $Spam_BLIP_blog_charset ) {
-			$Spam_BLIP_blog_charset = 'UTF-8';
+	static $_blog_charset;
+	if ( ! isset($_blog_charset) ) {
+		$_blog_charset = get_option('blog_charset');
+		if ( ! $_blog_charset ) {
+			$_blog_charset = 'UTF-8';
 		}
 	}
 
 	if ( $cset === null ) {
-		$cset = $Spam_BLIP_blog_charset;
+		$cset = $_blog_charset;
 	}
 
 	return htmlentities($text, ENT_QUOTES, $cset);
@@ -586,15 +586,17 @@ class Spam_BLIP_class {
 			$a = array();
 		}
 		// checkbox id will 'verbose_show-hide'
-		$a['verbose_show'] =
-		__('Per section verbose introduction', 'spambl_l10n');
+		$a['verbose_show'] = __('Section introductions', 'spambl_l10n');
 		return $a;
 	}
 
 	// filter for wp-admin/includes/screen.php show_screen_options()
-	// to return true and enable the menu
+	// to return true and enable the menu, or not
 	public function screen_options_show($a) {
-		return true;
+		if ( self::get_verbose_option() == 'true' ) {
+			return true;
+		}
+		return false;
 	}
 
 	public function admin_head() {
@@ -610,57 +612,114 @@ class Spam_BLIP_class {
 		}
 		$ok = $v >= ((3 << 8) + 3);
 
+		$t = array(
+			self::wt(sprintf(
 		// TRANSLATORS: first '%s' is the label of a checkbox option,
-		// second '%s' is the button label 'Save Settings'
-		$t = self::wt(sprintf(
-			__('<p>The <em>Spam BLIP</em> settings page includes
-			help for each section at its start. These texts may
-			be hidden or shown with the "%s"
+		// second '%s' is the button label 'Save Settings';
+		// The quoted string "Screen Options" should match an
+		// interface label from the WP core, so if possible
+		// use the WP core translation for that (likewise "Help").
+			__('<p>This settings page includes an introduction
+			for each section which should serve as help. These may
+			be hidden or shown with a checkbox under the
+			"Screen Options" tab (next to "Help") or with
+			the "%s"
 			option, which is the first option on this page.
+			If "Screen Options" is absent, the verbose option
+			is off: it must be on to enable that tab.
 			</p><p>
-			When any change is made, the new settings must be
-			submitted with the "%s" button, near the end
+			<em>Spam BLIP</em> will work well with
+			the installed defaults, so it\'s not necessary
+			to worry over the options on this page. Yes,
+			the options do look complicated. . . . 
+			</p><p>
+			Remember, when any change is made, the new settings must
+			be submitted with the "%s" button, near the end
 			of this page, to take effect.
 			</p>', 'spambl_l10n'),
 			__('Show verbose descriptions', 'spambl_l10n'),
 			__('Save Settings', 'spambl_l10n')
-		));
+			)),
+			self::wt(sprintf(
+		// TRANSLATORS: all '%s' are labels of checkbox options
+			__('<p>Although the defaults for these settings
+			will work well there are a couple that might be
+			considered from the start:<ul>
+			<li>"%s" -- because The Onion Router is a very
+			important protection for <em>real</em> people, even if
+			spammers abuse it and cause associated addresses
+			to be blacklisted</li>
+			<li>"%s" -- if you have access to the error log
+			of your site server, this will give you a view
+			of what the plugin has been doing</li>
+			<li>"%s" -- a small bit of CPU time and network
+			traffic will be saved when an IP address is
+			identified as a spammer (but in the case of a false
+			positive, this will seem rude)</li>
+			</ul>
+			<p>
+			Those options default to false/disabled (which is
+			why your attention is called to them).
+			</p><p>
+			<em>Spam BLIP</em> is expected work well as a first
+			line of defense against spam, and should complement
+			spam plugins that work by analyzing comment content.
+			It will probably not work in concert with other
+			DNS blacklist plugins, as there would probably be
+			conflicts in the way that <em>WordPress</em> core
+			code is "hooked".
+			</p>', 'spambl_l10n'),
+			__('Whitelist TOR addresses', 'spambl_l10n'),
+			__('Log blacklist hits', 'spambl_l10n'),
+			__('Bail (wp_die()) on blacklist hits', 'spambl_l10n')
+			))
+		);
 
 		// TRANSLATORS: first '%s' is the the phrase
 		// 'For more information:'; using translation
 		// from default textdomain (WP core)
-		$t2 = self::wt(sprintf(
+		$tt = self::wt(sprintf(
 			__('<p><strong>%s</strong></p<p>
-			Online help and tips, wordy pedantry, and more
+			Online help and tips, wordy pedantry,
+			vibes from the Dog Star, and more
 			can be found at the
 			<a href="http://agalena.nfshost.com/b1/" target="_blank">
-			Agalena site
-			</a>.
+			<del>psyte</del> site
+			</a>. Hey now!
 			</p>', 'spambl_l10n'),
 			__('For more information:')
 		));
 	
-		if ( self::get_verbose_option() == 'true' ) {
-			$h = 'manage_' . $this->opt->get_page_suffix() . '_columns';
-			add_filter($h, array($this, 'screen_options_columns'));
-			$h = 'screen_options_show_screen';
-			add_filter($h, array($this, 'screen_options_show'), 200);
-		}
+		$h = 'manage_' . $this->opt->get_page_suffix() . '_columns';
+		add_filter($h, array($this, 'screen_options_columns'));
+		$h = 'screen_options_show_screen';
+		add_filter($h, array($this, 'screen_options_show'), 200);
 
 		if ( $ok ) {
 			$scr = get_current_screen();
 			$scr->add_help_tab(array(
 				'id'      => 'overview',
 				'title'   => __('Overview'), // use transl. from core
-				'content' => $t
+				'content' => $t[0]
 				// content may be a callback
 				)
 			);
 	
-			$scr->set_help_sidebar($t2);
+			$scr->add_help_tab(array(
+				'id'      => 'help_tab_tips',
+				'title'   => __('Tips', 'spambl_l10n'),
+				'content' => $t[1]
+				// content may be a callback
+				)
+			);
+	
+			$scr->set_help_sidebar($tt);
 		} else {
 			global $current_screen;
-			add_contextual_help($current_screen, $t . $t2);
+			add_contextual_help($current_screen,
+				'<h6>' . __('Overview') . '</h6>' . $t[0] .
+				'<h6>' . __('Tips', 'spambl_l10n') . '</h6>' . $t[1] .
+				$tt);
 		}
 	}
 
@@ -879,35 +938,35 @@ class Spam_BLIP_class {
 		// WP_LANG_DIR or WP_PLUGIN_DIR/languages or WP_PLUGIN_DIR,
 		// and do translations in the plugin directory last.
 		
-		// The globals are a hack: want to keep this static,
-		// yet test whether .mo load call has been done
-		global $spambl_load_WP_textdomain_done;
-		global $spambl_load_plugin_langdir_textdomain_done;
-		global $spambl_load_plugin_dir_textdomain_done;
-		global $spambl_load_plugin_textdomain_done;
+		// hack test whether .mo load call has been done
+		static $WP_textdomain_done;
+		static $plugin_langdir_textdomain_done;
+		static $plugin_dir_textdomain_done;
+		static $plugin_textdomain_done;
 
 		$dom = 'spambl_l10n';
 
-		if ( ! isset($spambl_load_WP_textdomain_done)
+		if ( ! isset($WP_textdomain_done)
 			&& defined(WP_LANG_DIR) ) {
 			$loc = apply_filters('plugin_locale', get_locale(), $dom);
 			// this file path is built in the manner shown at the
 			// URL above -- it does look strange
-			$t = sprintf('%s/%s/%s-%s.mo', WP_LANG_DIR, $dom, $dom, $loc);
-			$spambl_load_WP_textdomain_done = load_textdomain($dom, $t);
+			$t = sprintf('%s/%s/%s-%s.mo',
+				WP_LANG_DIR, $dom, $dom, $loc);
+			$WP_textdomain_done = load_textdomain($dom, $t);
 		}
-		if ( ! isset($spambl_load_plugin_langdir_textdomain_done) ) {
+		if ( ! isset($plugin_langdir_textdomain_done) ) {
 			$t = 'languages/';
-			$spambl_load_plugin_langdir_textdomain_done =
+			$plugin_langdir_textdomain_done =
 				load_plugin_textdomain($dom, false, $t);
 		}
-		if ( ! isset($spambl_load_plugin_dir_textdomain_done) ) {
-			$spambl_load_plugin_dir_textdomain_done =
+		if ( ! isset($plugin_dir_textdomain_done) ) {
+			$plugin_dir_textdomain_done =
 				load_plugin_textdomain($dom, false, false);
 		}
-		if ( ! isset($spambl_load_plugin_textdomain_done) ) {
+		if ( ! isset($plugin_textdomain_done) ) {
 			$t = basename(trim(self::mk_plugindir(), '/')) . '/locale/';
-			$spambl_load_plugin_textdomain_done =
+			$plugin_textdomain_done =
 				load_plugin_textdomain($dom, false, $t);
 		}
 	}
@@ -1396,7 +1455,7 @@ class Spam_BLIP_class {
 
 		echo '</div>';
 		?>
-		<script>
+		<script type="text/javascript">
 		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
@@ -1485,7 +1544,7 @@ class Spam_BLIP_class {
 
 		echo '</div>';
 		?>
-		<script>
+		<script type="text/javascript">
 		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
@@ -1569,7 +1628,7 @@ class Spam_BLIP_class {
 
 		echo '</div>';
 		?>
-		<script>
+		<script type="text/javascript">
 		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
@@ -1648,7 +1707,7 @@ class Spam_BLIP_class {
 
 		echo '</div>';
 		?>
-		<script>
+		<script type="text/javascript">
 		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
@@ -1692,7 +1751,7 @@ class Spam_BLIP_class {
 
 		echo '</div>';
 		?>
-		<script>
+		<script type="text/javascript">
 		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
@@ -3547,12 +3606,10 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 	public function form($instance) {
 		$wt = 'wptexturize';  // display with char translations
-		// still being 5.2 compatible; anon funcs appeared in 5.3
-		//$ht = function($v) { return htmlentities($v, ENT_QUOTES, 'UTF-8'); };
-		$ht = 'Spam_BLIP_plugin_php52_htmlent'; // just escape without char translations
+		$ht = 'Spam_BLIP_php52_htmlent'; // escape w/o char translations
 		// NOTE on encoding: do *not* use JS::unescape()!
-		// decodeURIComponent() should use the page charset (which
-		// still leaves room for error; this code assumes UTF-8 presently)
+		// JS::decodeURIComponent() should use the page charset (which
+		// still leaves room for error; this assumes UTF-8 presently)
 		$et = 'rawurlencode'; // %XX -- for transfer
 
 		$val = array('title' => '', 'caption' => '');
