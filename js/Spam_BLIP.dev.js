@@ -111,7 +111,7 @@ spblip_ctl_textpair.prototype = {
 	},
 	cutcur : function (tx) {
 		this.selcur(tx);
-		var t, s, e, v = tx.value;
+		var t, s, e, v = this.sanitx(tx.value);
 		if ( ! (s = tx.selectionStart) )
 			s = 0;
 		if ( ! (e = tx.selectionEnd) && e !== 0 )
@@ -129,7 +129,7 @@ spblip_ctl_textpair.prototype = {
 		return t;
 	},
 	putcur : function (tx, val) {
-		var s, v = tx.value;
+		var s, v = this.sanitx(tx.value);
 		if ( ! (s = tx.selectionStart) )
 			s = 0;
 		while ( s > 0 ) {
@@ -139,7 +139,7 @@ spblip_ctl_textpair.prototype = {
 			}
 			--s;
 		}
-		tx.value = v.slice(0, s) + val + v.substring(s);
+		tx.value = v.slice(0, s) + this.sanitx(val) + v.substring(s);
 		tx.selectionStart = s;
 		tx.selectionEnd   = s + val.length;
 		return true;
@@ -172,6 +172,13 @@ spblip_ctl_textpair.prototype = {
 		}
 		tx.selectionStart = s;
 		tx.selectionEnd   = e;
+	},
+	sanitx : function (tx) {
+		var l = tx.length;
+		if ( l < 1 || tx.charAt(l - 1) == "\n" ) {
+			return tx;
+		}
+		return tx + "\n";
 	},
 	dbg  : null,
 	dbg_msg : function (msg) {

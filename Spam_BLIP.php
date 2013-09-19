@@ -157,6 +157,14 @@ class Spam_BLIP_class {
 	const opteditrbl = 'sp_bl_editrbl';
 	// optional inactive (reserved) RBL domains
 	const opteditrbr = 'sp_bl_editrbr';
+	// optional active user whitelist
+	const opteditwhl = 'sp_bl_editwhl';
+	// optional inactive user whitelist
+	const opteditwhr = 'sp_bl_editwhr';
+	// optional   active user blacklist
+	const opteditbll = 'sp_bl_editbll';
+	// optional inactive user blacklist
+	const opteditblr = 'sp_bl_editblr';
 	// delete options on uninstall
 	const optdelopts = 'delopts';
 	// delete data store on uninstall
@@ -201,6 +209,14 @@ class Spam_BLIP_class {
 	const defeditrbl = '';
 	// optional inactive (reserved) RBL domains
 	const defeditrbr = '';
+	// optional active user whitelist
+	const defeditwhl = '';
+	// optional inactive user whitelist
+	const defeditwhr = '';
+	// optional   active user blacklist
+	const defeditbll = 'sp_bl_editbll';
+	// optional inactive user blacklist
+	const defeditblr = 'sp_bl_editblr';
 	// delete options on uninstall
 	const defdelopts = 'true';
 	// delete data store on uninstall
@@ -208,6 +224,11 @@ class Spam_BLIP_class {
 	
 	// autoload class version suffix
 	const aclv = '0_0_2a';
+
+	// db maintenance interval; arg to WP cron
+	//const maint_intvl = 'hourly';
+	const maint_intvl = 'twicedaily.';
+	//const maint_intvl = 'daily.';
 
 	// object of class to handle options under WordPress
 	protected $opt = null;
@@ -346,6 +367,10 @@ class Spam_BLIP_class {
 			self::optbailout => self::defbailout,
 			self::opteditrbl => self::defeditrbl,
 			self::opteditrbr => self::defeditrbr,
+			self::opteditwhl => self::defeditwhl,
+			self::opteditwhr => self::defeditwhr,
+			self::opteditbll => self::defeditbll,
+			self::opteditblr => self::defeditblr,
 			self::optdelopts => self::defdelopts,
 			self::optdelstor => self::defdelstor,
 		);
@@ -512,6 +537,16 @@ class Spam_BLIP_class {
 				self::opteditrbl,
 				$items[self::opteditrbl],
 				array($this, 'put_editrbl_opt'));
+		$fields[$nf++] = new $Cf(self::opteditwhl,
+				self::wt(__('Active and inactive user whitelist:', 'spambl_l10n')),
+				self::opteditwhl,
+				$items[self::opteditwhl],
+				array($this, 'put_editwhl_opt'));
+		$fields[$nf++] = new $Cf(self::opteditbll,
+				self::wt(__('Active and inactive user blacklist:', 'spambl_l10n')),
+				self::opteditbll,
+				$items[self::opteditbll],
+				array($this, 'put_editbll_opt'));
 
 		// advanced
 		$sections[$ns++] = new $Cs($fields,
@@ -614,8 +649,8 @@ class Spam_BLIP_class {
 
 		$t = array(
 			self::wt(sprintf(
-		// TRANSLATORS: first '%s' is the label of a checkbox option,
-		// second '%s' is the button label 'Save Settings';
+		// TRANSLATORS: '%1$s' is the label of a checkbox option,
+		// '%2$s' is the button label 'Save Settings';
 		// The quoted string "Screen Options" should match an
 		// interface label from the WP core, so if possible
 		// use the WP core translation for that (likewise "Help").
@@ -623,7 +658,7 @@ class Spam_BLIP_class {
 			for each section which should serve as help. These may
 			be hidden or shown with a checkbox under the
 			"Screen Options" tab (next to "Help") or with
-			the "%s"
+			the "%1$s"
 			option, which is the first option on this page.
 			If "Screen Options" is absent, the verbose option
 			is off: it must be on to enable that tab.
@@ -634,7 +669,7 @@ class Spam_BLIP_class {
 			the options do look complicated. . . . 
 			</p><p>
 			Remember, when any change is made, the new settings must
-			be submitted with the "%s" button, near the end
+			be submitted with the "%2$s" button, near the end
 			of this page, to take effect.
 			</p>', 'spambl_l10n'),
 			__('Show verbose descriptions', 'spambl_l10n'),
@@ -645,14 +680,14 @@ class Spam_BLIP_class {
 			__('<p>Although the defaults for these settings
 			will work well there are a couple that might be
 			considered from the start:<ul>
-			<li>"%s" -- because The Onion Router is a very
+			<li>"%1$s" -- because The Onion Router is a very
 			important protection for <em>real</em> people, even if
 			spammers abuse it and cause associated addresses
 			to be blacklisted</li>
-			<li>"%s" -- if you have access to the error log
+			<li>"%2$s" -- if you have access to the error log
 			of your site server, this will give you a view
 			of what the plugin has been doing</li>
-			<li>"%s" -- a small bit of CPU time and network
+			<li>"%3$s" -- a small bit of CPU time and network
 			traffic will be saved when an IP address is
 			identified as a spammer (but in the case of a false
 			positive, this will seem rude)</li>
@@ -680,12 +715,10 @@ class Spam_BLIP_class {
 		// from default textdomain (WP core)
 		$tt = self::wt(sprintf(
 			__('<p><strong>%s</strong></p<p>
-			Online help and tips, wordy pedantry,
-			vibes from the Dog Star, and more
-			can be found at the
+			Online help and tips can be found at the
 			<a href="http://agalena.nfshost.com/b1/" target="_blank">
-			<del>psyte</del> site
-			</a>. Hey now!
+			web site
+			</a>.
 			</p>', 'spambl_l10n'),
 			__('For more information:')
 		));
@@ -775,7 +808,7 @@ class Spam_BLIP_class {
 			array($wreg, 'validate_opts'));
 
 		// un-setup cron job for e.g, db table maintenance
-		$aa = array('hourly');
+		$aa = array(self::maint_intvl);
 		wp_clear_scheduled_hook('Spam_BLIP_plugin_cron', $aa);
 	}
 
@@ -786,11 +819,17 @@ class Spam_BLIP_class {
 		add_action('widgets_init', $aa, 1);
 
 		// setup cron job for e.g, db table maintenance
-		$aa = array('hourly');
+		$aa = array(self::maint_intvl);
 		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
 			$tm = time();
+			// set midnight (or noon tomorrow), *local* time
+			$off = idate("Z", $tm);
+			$ds = 86400;
+			$dh = $ds >> 1;
+			$mid = $tm + $dh - ($tm % $dh) - $off;
+			//$noon = $tm + $ds - ($tm % $dh) - $off;
 			wp_schedule_event(
-				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
+				$mid, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
 		}
 	}
 
@@ -913,11 +952,17 @@ class Spam_BLIP_class {
 		add_action('shutdown', $aa, 200);
 
 		// setup cron job for e.g, db table maintenance
-		$aa = array('hourly');
+		$aa = array(self::maint_intvl);
 		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
 			$tm = time();
+			// set midnight (or noon tomorrow), *local* time
+			$off = idate("Z", $tm);
+			$ds = 86400;
+			$dh = $ds >> 1;
+			$mid = $tm + $dh - ($tm % $dh) - $off;
+			//$noon = $tm + $ds - ($tm % $dh) - $off;
 			wp_schedule_event(
-				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
+				$mid, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
 		}
 		// action for cron callback
 		$aa = array($cl, 'action_static_cron');
@@ -1234,7 +1279,7 @@ class Spam_BLIP_class {
 								$nupd += ($ot === $oo) ? 0 : 1;
 								break;
 							}
-							$e = __('bad TTL option: "%s"', 'swfput_l10n');
+							$e = __('bad TTL option: "%s"', 'spambl_l10n');
 							$e = sprintf($e, $ot);
 							self::errlog($e);
 							add_settings_error(self::wt($k),
@@ -1267,7 +1312,7 @@ class Spam_BLIP_class {
 								$nupd += ($ot === $oo) ? 0 : 1;
 								break;
 							}
-							$e = __('bad maximum: "%s"', 'swfput_l10n');
+							$e = __('bad maximum: "%s"', 'spambl_l10n');
 							$e = sprintf($e, $ot);
 							self::errlog($e);
 							add_settings_error(self::wt($k),
@@ -1279,6 +1324,54 @@ class Spam_BLIP_class {
 					}
 					break;
 				// textarea pairs
+				case self::opteditwhl:
+				case self::opteditwhr:
+				case self::opteditbll:
+				case self::opteditblr:
+					$lnm = ($k == self::opteditwhl ||
+							$k == self::opteditwhr)
+							? __('whitelist', 'spambl_l10n')
+							: __('blacklist', 'spambl_l10n');
+					$t = explode("\n", $ot);
+					$to = array();
+					for ( $i = 0; $i < count($t); $i++ ) {
+						$l = trim($t[$i]);
+						if ( $l == '' ) {
+							continue;
+						}
+						$chk = filter_var(
+							$l, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+						if ( $chk === false ) {
+							// TRANSLATORS: %1$s is either
+							// 'whitelist' or 'blacklist', and
+							// %2$s is an IP4 dotted quad address
+							$e = __('bad user %1$s address set: "%2$s"', 'spambl_l10n');
+							$e = sprintf($e, $lnm, $l);
+							self::errlog($e);
+							add_settings_error(self::wt($k),
+								sprintf('%s[%s]', self::opt_group, $k),
+								self::wt($e), 'error');
+							// error counter
+							$nerr++;
+							
+							// signal error post-loop
+							$t = false;
+							break;
+						}
+						$to[] = $l;
+					}
+					if ( $t === false ) {
+						$a_out[$k] = $oo;
+						break;
+					}
+					$t = is_array($oo) ? $oo : array();
+					if ( $to !== $t ) {
+						$a_out[$k] = $to;
+						$nupd++;
+					} else {
+						$a_out[$k] = $oo;
+					}
+					break;
 				case self::opteditrbl:
 				case self::opteditrbr:
 					$t = explode("\n", $ot);
@@ -1302,7 +1395,7 @@ class Spam_BLIP_class {
 						$chk = ChkBL_0_0_1::validate_dom_arg($l);
 						if ( $chk === false ) {
 							// record error for WP
-							$e = __('bad blacklist domain set: "%s"', 'swfput_l10n');
+							$e = __('bad blacklist domain set: "%s"', 'spambl_l10n');
 							$e = sprintf($e, $ln);
 							self::errlog($e);
 							add_settings_error(self::wt($k),
@@ -1372,10 +1465,10 @@ class Spam_BLIP_class {
 		// now register updates
 		if ( $nupd > 0 ) {
 			$str = $nerr == 0 ?
-				__('Settings updated successfully', 'swfput_l10n') :
+				__('Settings updated successfully', 'spambl_l10n') :
 				sprintf(_n('One (%d) setting updated',
 					'Some settings (%d) updated',
-					$nupd, 'swfput_l10n'), $nupd);
+					$nupd, 'spambl_l10n'), $nupd);
 			$type = $nerr == 0 ? 'updated' : 'updated error';
 			add_settings_error(self::opt_group, self::opt_group,
 				self::wt($str), $type);
@@ -1486,10 +1579,10 @@ class Spam_BLIP_class {
 		$t = self::wt(__('Introduction:', 'spambl_l10n'));
 		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
-		$t = self::wt(__('These options enable or disable
+		$t = self::wt(__('These options enable, disable or configure
 			the storage of blacklist lookup results in the
 			<em>WordPress</em> database, or the use of the
-			stored data to before DNS lookup.', 'spambl_l10n'));
+			stored data before DNS lookup.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('The "Keep data" option enables recording of
@@ -1515,7 +1608,11 @@ class Spam_BLIP_class {
 			value is one day (86400 seconds). If you do not want
 			any of the presets, the text field accepts a value
 			in seconds, where zero (0) or less will disable the
-			TTL.', 'spambl_l10n'));
+			TTL.
+			When an address is being checked, the database lookup
+			requests only records that have with a last-seen time
+			within the TTL; also, when database maintenance is
+			performed, expired records are removed.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('The "Maximum data records" option limits how
@@ -1702,6 +1799,16 @@ class Spam_BLIP_class {
 			the whole third part is absent then a DNS lookup
 			return is checked for complete equality with the value
 			of the second part.
+			', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Active and inactive user whitelist"
+			and "Active and inactive user blacklist"
+			text fields can be used to add addresses that will
+			always be allowed, or always denied, respectively.
+			Like the blacklist domains fields, only those in the
+			left side "active" text areas are used, and addresses in
+			the right side "inactive" areas are not used, but stored.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
@@ -2008,6 +2115,122 @@ class Spam_BLIP_class {
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
+	// callback, put textarea pair for user whitelist
+	public function put_editwhl_opt($a) {
+		$gr = self::opt_group;
+		$ol = self::opteditwhl;
+		$or = self::opteditwhr;
+		$dl = self::get_editwhl_option();
+		$dr = self::get_editwhr_option();
+
+		if ( $dl === '' || (! is_array($dl)) ) {
+			$dl = array();
+		}
+		if ( $dr === '' || (! is_array($dr)) ) {
+			$dr = array();
+		}
+
+		$vl = self::ht(implode("\n", $dl) . "\n");
+		$vr = self::ht(implode("\n", $dr) . "\n");
+	
+		// atts for textarea
+		$txh = 4;
+		$txw = 48;
+		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
+		$txatt .= ' inputmode="verbatim" wrap="off"';
+	
+		$aargs = array(
+			// textarea element attributes; esp., name
+			'txattl' => $txatt . ' placeholder="127.0.0.2" name="' . "{$gr}[{$ol}]" . '"',
+			'txattr' => $txatt . ' placeholder="127.0.0.32" name="' . "{$gr}[{$or}]" . '"',
+			// textarea initial values
+			'txvall' => $vl,
+			'txvalr' => $vr,
+			// TRANSLATORS: these are labels above textarea elements
+			// do not use html entities
+			'ltxlb' => self::wt(__('Active User Whitelist:')),
+			'rtxlb' => self::wt(__('Inactive User Whitelist:')),
+			// option (map) names as textarea IDs
+			'ltxid' => $ol,
+			'rtxid' => $or,
+			// incr for each, button IDs
+			'lbtid' => 'spblip_buttxpair_2_l',
+			'rbtid' => 'spblip_buttxpair_2_r',
+			// TRANSLATORS: these are buttons below textarea elements,
+			// effect is to move a line of text from one to the other;
+			// '<<' and '>>' should suggest movement left and right
+			// do not use html entities
+			'lbttx' => self::wt(__('Move address right >>')),
+			'rbttx' => self::wt(__('<< Move address left')),
+			// incr for each, debug span element
+			'dbg_span' => 'spblip_debug_span2',
+			// JS control class name - a plugin class const
+			'classname' => self::js_textpair_ctl,
+			// incr for each, up to 6, or add more in JS
+			'obj_key' => self::js_textpair_ctl . '_objmap.form_2'
+		);
+
+		$this->put_textarea_pair($aargs);
+	}
+
+	// callback, put textarea pair for user blacklist
+	public function put_editbll_opt($a) {
+		$gr = self::opt_group;
+		$ol = self::opteditbll;
+		$or = self::opteditblr;
+		$dl = self::get_editbll_option();
+		$dr = self::get_editblr_option();
+
+		if ( $dl === '' || (! is_array($dl)) ) {
+			$dl = array();
+		}
+		if ( $dr === '' || (! is_array($dr)) ) {
+			$dr = array();
+		}
+
+		$vl = self::ht(implode("\n", $dl) . "\n");
+		$vr = self::ht(implode("\n", $dr) . "\n");
+	
+		// atts for textarea
+		$txh = 4;
+		$txw = 48;
+		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
+		$txatt .= ' inputmode="verbatim" wrap="off"';
+	
+		$aargs = array(
+			// textarea element attributes; esp., name
+			'txattl' => $txatt . ' placeholder="127.0.0.2" name="' . "{$gr}[{$ol}]" . '"',
+			'txattr' => $txatt . ' placeholder="127.0.0.32" name="' . "{$gr}[{$or}]" . '"',
+			// textarea initial values
+			'txvall' => $vl,
+			'txvalr' => $vr,
+			// TRANSLATORS: these are labels above textarea elements
+			// do not use html entities
+			'ltxlb' => self::wt(__('Active User Blacklist:')),
+			'rtxlb' => self::wt(__('Inactive User Blacklist:')),
+			// option (map) names as textarea IDs
+			'ltxid' => $ol,
+			'rtxid' => $or,
+			// incr for each, button IDs
+			'lbtid' => 'spblip_buttxpair_3_l',
+			'rbtid' => 'spblip_buttxpair_3_r',
+			// TRANSLATORS: these are buttons below textarea elements,
+			// effect is to move a line of text from one to the other;
+			// '<<' and '>>' should suggest movement left and right
+			// do not use html entities
+			'lbttx' => self::wt(__('Move address right >>')),
+			'rbttx' => self::wt(__('<< Move address left')),
+			// incr for each, debug span element
+			'dbg_span' => 'spblip_debug_span3',
+			// JS control class name - a plugin class const
+			'classname' => self::js_textpair_ctl,
+			// incr for each, up to 6, or add more in JS
+			'obj_key' => self::js_textpair_ctl . '_objmap.form_3'
+		);
+
+		$this->put_textarea_pair($aargs);
+	}
+
 	// callback, put textarea pair for RBL domains
 	public function put_editrbl_opt($a) {
 		$gr = self::opt_group;
@@ -2187,6 +2410,26 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::opteditrbr);
 	}
 
+	// get active 	user whitelist
+	public static function get_editwhl_option() {
+		return self::opt_by_name(self::opteditwhl);
+	}
+
+	// get inactive user whitelist
+	public static function get_editwhr_option() {
+		return self::opt_by_name(self::opteditwhr);
+	}
+
+	// get active 	user blacklist
+	public static function get_editbll_option() {
+		return self::opt_by_name(self::opteditbll);
+	}
+
+	// get inactive user blacklist
+	public static function get_editblr_option() {
+		return self::opt_by_name(self::opteditblr);
+	}
+
 	/**
 	 * core functionality
 	 */
@@ -2207,7 +2450,7 @@ class Spam_BLIP_class {
 		}
 		
 		$ret = false;
-		// TODO: add options
+		// The simple check is not needed here
 		if ( true ) {
 			$this->rbl_result = $this->chkbl->check_all($addr, 1);
 			if ( ! empty($this->rbl_result) ) {
@@ -2259,7 +2502,7 @@ class Spam_BLIP_class {
 	// action called from cron hook; 
 	public static function action_static_cron($what) {
 		switch ( $what ) {
-			case 'hourly':
+			case self::maint_intvl:
 				$inst = self::get_instance(); // can call repeatedly
 				$inst->db_tbl_maintain();
 				break;
@@ -2427,6 +2670,19 @@ class Spam_BLIP_class {
 			return $def;
 		}
 		
+		$pretime = self::best_time();
+
+		// optional check in user whitelist
+		// *before* reserved address check, to allow
+		// whitelisting those
+		if ( $this->chk_user_whitelist($addr, $statype, $pretime) ) {
+			// set the result; checked in various places
+			$this->rbl_result = array(false);
+			// flag this like db check w a hit
+			$this->dbl_result = array(false);
+			return $def;
+		}
+
 		// Check for not non-routable CGI/1.1 envar REMOTE_ADDR
 		// as can actually happen with some hosting hacks.
 		$ret = $this->ipchk_done ? false
@@ -2455,7 +2711,11 @@ class Spam_BLIP_class {
 
 		$ret = false; // redundant, safe
 
-		$pretime = self::best_time();
+		// optional check in user blacklist
+		if ( ! $ret &&
+			$this->chk_user_blacklist($addr, $statype, $pretime) ) {
+			$ret = true;
+		}
 
 		// optional check in WP stored comments
 		if ( ! $ret &&
@@ -2480,8 +2740,8 @@ class Spam_BLIP_class {
 		}
 		
 		// optional data store check
-		if (  ! $ret &&
-			$this->chk_db_4_hit($addr, $statype, (int)$pretime) ) {
+		if ( ! $ret &&
+			$this->chk_db_4_hit($addr, $statype, $pretime) ) {
 			$ret = true;
 		}
 
@@ -2579,8 +2839,90 @@ class Spam_BLIP_class {
 	}
 
 
+	// optionally user whitelist for address
+	protected function chk_user_whitelist($addr, $statype, $tm) {
+		$l = self::get_editwhl_option();
+		if ( $l === '' || ! is_array($l) || count($l) < 1 ) {
+			return false;
+		}
+		if ( array_search($addr, $l) === false ) {
+			return false;
+		}
+
+		// optional hit logging
+		if ( self::get_hitlog_option() != 'false' ) {
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ptxt = __('pings', 'spambl_l10n');
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ctxt = __('comments', 'spambl_l10n');
+
+			$dtxt = $statype === 'pings' ? $ptxt :
+				($statype === 'comments' ? $ctxt : $statype);
+
+			$fmt =
+			// TRANSLATORS: %1$s is type "comments" or "pings"
+			// %2$s is IP4 address dotted quad
+			// %3$f is is time (float) used in option check
+			__('%1$s allowed address %2$s, found in user whitelist (lookup time %3$f)', 'spambl_l10n');
+			$fmt = sprintf($fmt, $dtxt, $addr, self::best_time() - $tm);
+			self::errlog($fmt);
+		}		
+
+		// optionally record stats
+		if ( self::get_recdata_option() != 'false' ) {
+			$this->db_update_array(
+				$this->db_make_array(
+					$addr, 1, (int)$tm, 'white'
+				)
+			);
+		}
+		
+		return true;
+	}
+
+	// optionally user blacklist for address
+	protected function chk_user_blacklist($addr, $statype, $tm) {
+		$l = self::get_editbll_option();
+		if ( $l === '' || ! is_array($l) || count($l) < 1 ) {
+			return false;
+		}
+		if ( array_search($addr, $l) === false ) {
+			return false;
+		}
+
+		// optional hit logging
+		if ( self::get_hitlog_option() != 'false' ) {
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ptxt = __('pings', 'spambl_l10n');
+			// TRANSLATORS: see "TRANSLATORS: %1$s is type..."
+			$ctxt = __('comments', 'spambl_l10n');
+
+			$dtxt = $statype === 'pings' ? $ptxt :
+				($statype === 'comments' ? $ctxt : $statype);
+
+			$fmt =
+			// TRANSLATORS: %1$s is type "comments" or "pings"
+			// %2$s is IP4 address dotted quad
+			// %3$f is is time (float) used in option check
+			__('%1$s denied address %2$s, found in user blacklist (lookup time %3$f)', 'spambl_l10n');
+			$fmt = sprintf($fmt, $dtxt, $addr, self::best_time() - $tm);
+			self::errlog($fmt);
+		}		
+
+		// optionally record stats
+		if ( self::get_recdata_option() != 'false' ) {
+			$this->db_update_array(
+				$this->db_make_array(
+					$addr, 1, (int)$tm, 'black'
+				)
+			);
+		}
+		
+		return true;
+	}
+
 	// optionally check data store for address
-	protected function chk_db_4_hit($addr, $type, $tm = null) {
+	protected function chk_db_4_hit($addr, $statype, $tm = null) {
 		if ( self::get_usedata_option() == 'false' ) {
 			return false;
 		}
