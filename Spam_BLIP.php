@@ -825,8 +825,8 @@ class Spam_BLIP_class {
 			// set midnight (or noon tomorrow), *local* time
 			$off = idate("Z", $tm);
 			$ds = 86400;
-			$dh = $ds >> 1;
-			$mid = $tm + $dh - ($tm % $dh) - $off;
+			$mid = $tm + $ds - ($tm % $ds) - $off;
+			//$dh = $ds >> 1;
 			//$noon = $tm + $ds - ($tm % $dh) - $off;
 			wp_schedule_event(
 				$mid, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
@@ -958,8 +958,8 @@ class Spam_BLIP_class {
 			// set midnight (or noon tomorrow), *local* time
 			$off = idate("Z", $tm);
 			$ds = 86400;
-			$dh = $ds >> 1;
-			$mid = $tm + $dh - ($tm % $dh) - $off;
+			$mid = $tm + $ds - ($tm % $ds) - $off;
+			//$dh = $ds >> 1;
 			//$noon = $tm + $ds - ($tm % $dh) - $off;
 			wp_schedule_event(
 				$mid, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
