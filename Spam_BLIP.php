@@ -125,7 +125,7 @@ class Spam_BLIP_class {
 	// option group name in the WP opt db
 	const opt_group  = '_evh_Spam_BLIP_plugin1_opt_grp';
 	// WP option names/keys
-	// verbose (helpful?) section descriptions?
+	// verbose (helpful?) section introductions?
 	const optverbose = 'verbose';
 	// filter comments_open?
 	const optcommflt = 'commflt';
@@ -177,7 +177,7 @@ class Spam_BLIP_class {
 	// option name for data store version
 	const data_vs_opt  = 'Spam_BLIP_plugin1_data_vers';
 
-	// verbose (helpful?) section descriptions?
+	// verbose (helpful?) section introductions?
 	const defverbose = 'true';
 	// filter comments_open?
 	const defcommflt = 'true';
@@ -427,7 +427,7 @@ class Spam_BLIP_class {
 		$nf = 0;
 		$fields = array();
 		$fields[$nf++] = new $Cf(self::optverbose,
-				self::wt(__('Show verbose descriptions:', 'spambl_l10n')),
+				self::wt(__('Show verbose introductions:', 'spambl_l10n')),
 				self::optverbose,
 				$items[self::optverbose],
 				array($this, 'put_verbose_opt'));
@@ -654,8 +654,8 @@ class Spam_BLIP_class {
 		// The quoted string "Screen Options" should match an
 		// interface label from the WP core, so if possible
 		// use the WP core translation for that (likewise "Help").
-			__('<p>This settings page includes an introduction
-			for each section which should serve as help. These may
+			__('<p>This settings page has an introduction
+			to section which should serve as help. These may
 			be hidden or shown with a checkbox under the
 			"Screen Options" tab (next to "Help") or with
 			the "%1$s"
@@ -672,14 +672,14 @@ class Spam_BLIP_class {
 			be submitted with the "%2$s" button, near the end
 			of this page, to take effect.
 			</p>', 'spambl_l10n'),
-			__('Show verbose descriptions', 'spambl_l10n'),
+			__('Show verbose introductions', 'spambl_l10n'),
 			__('Save Settings', 'spambl_l10n')
 			)),
 			self::wt(sprintf(
 		// TRANSLATORS: all '%s' are labels of checkbox options
-			__('<p>Although the defaults for these settings
-			will work well there are a couple that might be
-			considered from the start:<ul>
+			__('<p>Although the default settings
+			will work well, consider enabling these:
+			<ul>
 			<li>"%1$s" -- because The Onion Router is a very
 			important protection for <em>real</em> people, even if
 			spammers abuse it and cause associated addresses
@@ -696,13 +696,16 @@ class Spam_BLIP_class {
 			Those options default to false/disabled (which is
 			why your attention is called to them).
 			</p><p>
+			If you find that a welcome visitor could not comment
+			because their IP address was in a blacklist, add their
+			address to the "Active User Whitelist" in the
+			"Advanced Options" section.
+			</p><p>
 			<em>Spam BLIP</em> is expected work well as a first
 			line of defense against spam, and should complement
-			spam plugins that work by analyzing comment content.
-			It will probably not work in concert with other
-			DNS blacklist plugins, as there would probably be
-			conflicts in the way that <em>WordPress</em> core
-			code is "hooked".
+			spam filter plugins that work by analyzing comment content.
+			It might not work in concert with other
+			DNS blacklist plugins.
 			</p>', 'spambl_l10n'),
 			__('Whitelist TOR addresses', 'spambl_l10n'),
 			__('Log blacklist hits', 'spambl_l10n'),
@@ -1475,11 +1478,14 @@ class Spam_BLIP_class {
 
 		// now register updates
 		if ( $nupd > 0 ) {
-			$str = $nerr == 0 ?
-				__('Settings updated successfully', 'spambl_l10n') :
-				sprintf(_n('One (%d) setting updated',
+			$fmt = $nerr == 0
+				? _n('%u setting updated successfully',
+					'%u settings updated successfully',
+					$nupd, 'spambl_l10n')
+				: _n('One (%d) setting updated',
 					'Some settings (%d) updated',
-					$nupd, 'spambl_l10n'), $nupd);
+					$nupd, 'spambl_l10n');
+			$str = sprintf($fmt, $nupd);
 			$type = $nerr == 0 ? 'updated' : 'updated error';
 			add_settings_error(self::opt_group, self::opt_group,
 				self::wt($str), $type);
@@ -1492,7 +1498,7 @@ class Spam_BLIP_class {
 	 * Options section callbacks
 	 */
 	
-	// callback: put html for placement field description
+	// callback: put html for general setting section description
 	public function put_general_desc() {
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
@@ -1504,11 +1510,12 @@ class Spam_BLIP_class {
 		$t = self::wt(__('Introduction:', 'spambl_l10n'));
 		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
-		$t = self::wt(__('The verbose option selects whether
-			verbose descriptions
+		$t = self::wt(__('The "Show verbose introductions"
+			option selects whether
+			verbose introductions
 			should be displayed with the various settings
-			sections. The long descriptions, of which 
-			this paragraph is an example,
+			sections. The long introductions, one of which 
+			this paragraph is a part,
 			will not be shown if the option is not
 			selected.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
@@ -1528,14 +1535,15 @@ class Spam_BLIP_class {
 			but for pings.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
-		$t = self::wt(__('The "Whitelist (pass) TOR exit nodes" option 
+		$t = self::wt(__('The "Whitelist TOR exit nodes" option 
 			enables a special lookup to try to determine if the
-			connecting address is a TOR exit node (there are some
-			false negatives). If it is found to be one, it is
+			connecting address is a TOR exit node.
+			If it is found to be one (there are some
+			false negatives), it is
 			allowed to comment or ping. This option might be
 			important if your site has content that is political,
 			or in some way controversial, as visitors you would
-			welcome might like to use TOR. TOR is an important
+			welcome might need to use TOR. TOR is an important
 			tool for Internet anonymity, but unfortunately spammers
 			have abused it, and  so some DNS blacklist operators
 			include any TOR address. This option probably will let
@@ -1568,7 +1576,7 @@ class Spam_BLIP_class {
 		printf('<p><a href="#aSubmit">%s</a></p>%s', $t, "\n");
 	}
 
-	// callback: store and use data section
+	// callback: store and use data section description
 	public function put_datastore_desc() {
 		$cnt = $this->db_get_rowcount();
 		if ( $cnt ) {
@@ -1663,7 +1671,7 @@ class Spam_BLIP_class {
 		printf('<p><a href="#general">%s</a></p>%s', $t, "\n");
 	}
 
-	// callback: put html for placement field description
+	// callback: put html for miscellanous setting description
 	public function put_misc_desc() {
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
@@ -1747,7 +1755,7 @@ class Spam_BLIP_class {
 		printf('<p><a href="#general">%s</a></p>%s', $t, "\n");
 	}
 
-	// callback: put html for placement field description
+	// callback: put html for advanced setting description
 	public function put_advanced_desc() {
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
@@ -1837,7 +1845,7 @@ class Spam_BLIP_class {
 	}
 
 
-	// callback: put html install field description
+	// callback: put html install setting description
 	public function put_inst_desc() {
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
@@ -1940,9 +1948,9 @@ class Spam_BLIP_class {
 	<?php
 	}
 
-	// callback, put verbose section descriptions?
+	// callback, put verbose section introductions?
 	public function put_verbose_opt($a) {
-		$tt = self::wt(__('Show verbose descriptions', 'spambl_l10n'));
+		$tt = self::wt(__('Show verbose introductions', 'spambl_l10n'));
 		$k = self::optverbose;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
@@ -2341,7 +2349,7 @@ class Spam_BLIP_class {
 		return null;
 	}
 
-	// for settings section descriptions
+	// for settings section introductions
 	public static function get_verbose_option() {
 		return self::opt_by_name(self::optverbose);
 	}
@@ -3767,9 +3775,9 @@ class Spam_BLIP_widget_class extends WP_Widget {
 	
 		$cl = __CLASS__;
 		// Label shown on widgets page
-		$lb =  __('Spam_BLIP Plugin Data', 'spambl_l10n');
+		$lb =  __('Spam BLIP Plugin Info', 'spambl_l10n');
 		// Description shown under label shown on widgets page
-		$desc = __('Display comment and ping spam blacklist stored data information', 'spambl_l10n');
+		$desc = __('Display comment and ping spam hit information, and database table row count', 'spambl_l10n');
 		$opts = array('classname' => $cl, 'description' => $desc);
 
 		// control opts width affects the parameters form,
