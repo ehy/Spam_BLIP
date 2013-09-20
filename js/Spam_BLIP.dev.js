@@ -31,8 +31,9 @@ spblip_ctl_screenopt.prototype = {
 		this.all[id] = document.getElementById(id);
 	},
 	tog : function (ch) {
+		var dis = ch ? "none" : "block";
 		for ( var k in this.all ) {
-			this.all[k].hidden = ch;
+			this.all[k].style.display = dis;
 		}
 	},
 	clk : function () {
