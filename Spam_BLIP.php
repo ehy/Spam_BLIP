@@ -64,10 +64,10 @@ endif;
 
 // these support classes are in separate files as they are
 // not specific to this plugin, and may be used in others
-Spam_BLIP_plugin_paranoid_require_class('OptField_0_0_2a');
-Spam_BLIP_plugin_paranoid_require_class('OptSection_0_0_2a');
-Spam_BLIP_plugin_paranoid_require_class('OptPage_0_0_2a');
-Spam_BLIP_plugin_paranoid_require_class('Options_0_0_2a');
+Spam_BLIP_plugin_paranoid_require_class('OptField_0_0_2b');
+Spam_BLIP_plugin_paranoid_require_class('OptSection_0_0_2b');
+Spam_BLIP_plugin_paranoid_require_class('OptPage_0_0_2b');
+Spam_BLIP_plugin_paranoid_require_class('Options_0_0_2b');
 Spam_BLIP_plugin_paranoid_require_class('ChkBL_0_0_1');
 
 /**********************************************************************\
@@ -223,7 +223,7 @@ class Spam_BLIP_class {
 	const defdelstor = 'true';
 	
 	// autoload class version suffix
-	const aclv = '0_0_2a';
+	const aclv = '0_0_2b';
 
 	// db maintenance interval; arg to WP cron
 	//const maint_intvl = 'hourly';
@@ -821,15 +821,10 @@ class Spam_BLIP_class {
 		// setup cron job for e.g, db table maintenance
 		$aa = array(self::maint_intvl);
 		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
-			$tm = time();
-			// set midnight (or noon tomorrow), *local* time
-			$off = idate("Z", $tm);
-			$ds = 86400;
-			$mid = $tm + $ds - ($tm % $ds) - $off;
-			//$dh = $ds >> 1;
-			//$noon = $tm + $ds - ($tm % $dh) - $off;
+			// set next midnight, *local* time
+			$tm = self::tm_next_12meridian();
 			wp_schedule_event(
-				$mid, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
+				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
 		}
 	}
 
@@ -954,15 +949,10 @@ class Spam_BLIP_class {
 		// setup cron job for e.g, db table maintenance
 		$aa = array(self::maint_intvl);
 		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
-			$tm = time();
-			// set midnight (or noon tomorrow), *local* time
-			$off = idate("Z", $tm);
-			$ds = 86400;
-			$mid = $tm + $ds - ($tm % $ds) - $off;
-			//$dh = $ds >> 1;
-			//$noon = $tm + $ds - ($tm % $dh) - $off;
+			// set next midnight, *local* time
+			$tm = self::tm_next_12meridian();
 			wp_schedule_event(
-				$mid, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
+				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
 		}
 		// action for cron callback
 		$aa = array($cl, 'action_static_cron');
@@ -1136,16 +1126,16 @@ class Spam_BLIP_class {
 		// try to use get_option('blog_charset') only once;
 		// it's not cheap enough even with WP's cache for
 		// the number of times this might be called
-		global $Spam_BLIP_blog_charset;
-		if ( ! isset($Spam_BLIP_blog_charset) ) {
-			$Spam_BLIP_blog_charset = get_option('blog_charset');
-			if ( ! $Spam_BLIP_blog_charset ) {
-				$Spam_BLIP_blog_charset = 'UTF-8';
+		static $_blog_charset;
+		if ( ! isset($_blog_charset) ) {
+			$_blog_charset = get_option('blog_charset');
+			if ( ! $_blog_charset ) {
+				$_blog_charset = 'UTF-8';
 			}
 		}
 	
 		if ( $cset === null ) {
-			$cset = $Spam_BLIP_blog_charset;
+			$cset = $_blog_charset;
 		}
 
 		return htmlentities($text, ENT_QUOTES, $cset);
@@ -1204,6 +1194,27 @@ class Spam_BLIP_class {
 			return microtime(true);
 		}
 		return (int)time();
+	}
+
+	// get future epoch timestamp for next noon or midnight
+	// $tm should generally be time() now, or leave it null
+	// if $local is true then get local offset value, else UTC
+	// if $noon is false get next midnight, else next noon
+	public static function tm_next_12meridian(
+		$tm = null, $local = true, $noon = false
+		) {
+		if ( $tm === null ) {
+			$tm = time();
+		}
+		$t = $tm - ($tm % 86400) + ($noon ? 43200 : 86400);
+		// can happen for noon:
+		if ( $t < $tm ) {
+			$t += 86400;
+		}
+		if ( $local ) {
+			$t -= idate("Z", $tm);
+		}
+		return $t;
 	}
 
 	// optional additional response to unexpected REMOTE_ADDR;

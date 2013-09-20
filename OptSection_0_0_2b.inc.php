@@ -1,6 +1,6 @@
 <?php
 /*
- *  OptField_0_0_2a.inc.php
+ *  OptSection_0_0_2b.inc.php
  *  
  *  Copyright 2011 Ed Hynan <edhynan@gmail.com>
  *  
@@ -33,9 +33,9 @@
 \**********************************************************************/
 
 /**
- * class for individual fields in a section of a settings/option page
+ * class for individual section of a settings/option page
  */
-class OptField_0_0_2a {
+class OptSection_0_0_2b {
 	// help detect class name conflicts; called by using code
 	// const evh_opt_id = 0xED00AA33; // N.G. < 5.3
 	private static $evh_opt_id = 0xED00AA33;
@@ -43,23 +43,21 @@ class OptField_0_0_2a {
 		return self::$evh_opt_id;
 	}
 
-	public $id;           // field unique id; string
-	public $label;        // field label
-	public $key;          // ...into option array
-	public $defval;       // a default for $opt[$key];
-	public $callback;     // to put html for form field -
+	public $fields;       // array of OptField_0_0_2b instances
+	public $id;           // section unique id; string
+	public $label;        // not label, section header
+	public $callback;     // to put section description under header -
 	                      // if not given then
-	                      // Options_0_0_2a::settings_field()
+	                      // Options_0_0_2b::settings_section()
 	                      // is used; see that as an example
 
-	public function __construct($fid, $flabel, $fkey, $fdefval,
-		$fcallback = '')
+	public function __construct($sfields, $sid, $slabel,
+		$scallback = '')
 	{
-		$this->id = $fid;
-		$this->label = $flabel;
-		$this->key = $fkey;
-		$this->defval = $fdefval;
-		$this->callback = $fcallback;
+		$this->fields = $sfields;
+		$this->id = $sid;
+		$this->label = $slabel;
+		$this->callback = $scallback;
 	}
 }
 
