@@ -229,6 +229,8 @@ class Spam_BLIP_class {
 	//const maint_intvl = 'hourly';
 	const maint_intvl = 'twicedaily.';
 	//const maint_intvl = 'daily.';
+	// array to hold arg to wp_schedule_event:
+	private static $wp_cron_arg = array(self::maint_intvl);
 
 	// object of class to handle options under WordPress
 	protected $opt = null;
@@ -295,7 +297,7 @@ class Spam_BLIP_class {
 		$this->dbl_result = false;
 		$this->do_db_maintain = false;
 		$this->ipchk = new IPReservedCheck_0_0_1();
-
+		
 		if ( ($this->full_init = $init) !== true ) {
 			// must do this
 			$this->init_opts();
@@ -654,8 +656,9 @@ class Spam_BLIP_class {
 		// The quoted string "Screen Options" should match an
 		// interface label from the WP core, so if possible
 		// use the WP core translation for that (likewise "Help").
-			__('<p>This settings page has an introduction
-			to section which should serve as help. These may
+			__('<p>The sections of this page each have an
+			introduction which will, hopefully, be helpful.
+			These introductions may
 			be hidden or shown with a checkbox under the
 			"Screen Options" tab (next to "Help") or with
 			the "%1$s"
@@ -665,8 +668,7 @@ class Spam_BLIP_class {
 			</p><p>
 			<em>Spam BLIP</em> will work well with
 			the installed defaults, so it\'s not necessary
-			to worry over the options on this page. Yes,
-			the options do look complicated. . . . 
+			to worry over the options on this page. 
 			</p><p>
 			Remember, when any change is made, the new settings must
 			be submitted with the "%2$s" button, near the end
@@ -726,11 +728,13 @@ class Spam_BLIP_class {
 			__('For more information:')
 		));
 	
+		// finagle the "Screen Options" tab
 		$h = 'manage_' . $this->opt->get_page_suffix() . '_columns';
 		add_filter($h, array($this, 'screen_options_columns'));
 		$h = 'screen_options_show_screen';
 		add_filter($h, array($this, 'screen_options_show'), 200);
 
+		// put help tab content, for 3.3.1 or greater . . .
 		if ( $ok ) {
 			$scr = get_current_screen();
 			$scr->add_help_tab(array(
@@ -750,6 +754,8 @@ class Spam_BLIP_class {
 			);
 	
 			$scr->set_help_sidebar($tt);
+		
+		// . . . or, lesser
 		} else {
 			global $current_screen;
 			add_contextual_help($current_screen,
@@ -787,6 +793,7 @@ class Spam_BLIP_class {
 	 */
 	
 	// register shortcode editor forms javascript
+	/**
 	public static function filter_admin_print_scripts() {
 	    if ( false && $GLOBALS['editing'] && current_user_can('edit_posts') ) {
 			$jsfn = 'Spam_BLIP_plugin_java_object';
@@ -796,6 +803,7 @@ class Spam_BLIP_class {
 	        wp_enqueue_script($jsfn, $jsfile, array('jquery'), 'xed');
 	    }
 	}
+	*/
 
 	// deactivate cleanup
 	public static function on_deactivate() {
@@ -811,8 +819,11 @@ class Spam_BLIP_class {
 			array($wreg, 'validate_opts'));
 
 		// un-setup cron job for e.g, db table maintenance
-		$aa = array(self::maint_intvl);
-		wp_clear_scheduled_hook('Spam_BLIP_plugin_cron', $aa);
+		wp_clear_scheduled_hook('Spam_BLIP_plugin_cron',
+			self::$wp_cron_arg);
+		// action for cron callback
+		$aa = array($wreg, 'action_static_cron');
+		remove_action('Spam_BLIP_plugin_cron', $aa);
 	}
 
 	// activate setup
@@ -822,12 +833,15 @@ class Spam_BLIP_class {
 		add_action('widgets_init', $aa, 1);
 
 		// setup cron job for e.g, db table maintenance
-		$aa = array(self::maint_intvl);
-		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
-			// set next midnight, *local* time
-			$tm = self::tm_next_12meridian();
+		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron',
+			self::$wp_cron_arg) ) {
+			// set *previous* midnight, *local* time -- there is
+			// something very fragile about the wp cron facility:
+			// tough to get it to actually work
+			$tm = time(); //self::tm_next_12meridian(); // - 86400;
 			wp_schedule_event(
-				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
+				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
+					self::$wp_cron_arg);
 		}
 	}
 
@@ -847,6 +861,11 @@ class Spam_BLIP_class {
 		if ( $opts && $opts[self::optdelopts] != 'false' ) {
 			delete_option(self::opt_group);
 		}
+
+		// un-setup cron job for e.g, db table maintenance
+		$aa = array(self::maint_intvl);
+		wp_clear_scheduled_hook('Spam_BLIP_plugin_cron',
+			self::$wp_cron_arg);
 	}
 
 	// add link at plugins page entry for the settings page
@@ -911,8 +930,8 @@ class Spam_BLIP_class {
 				register_uninstall_hook($pf,    $aa);
 			}
 	
-			$aa = array($cl, 'filter_admin_print_scripts');
-			add_action('admin_print_scripts', $aa);
+			//$aa = array($cl, 'filter_admin_print_scripts');
+			//add_action('admin_print_scripts', $aa);
 	
 			// Settings/Options page setup
 			if ( current_user_can('manage_options') ) {
@@ -950,12 +969,15 @@ class Spam_BLIP_class {
 		add_action('shutdown', $aa, 200);
 
 		// setup cron job for e.g, db table maintenance
-		$aa = array(self::maint_intvl);
-		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron', $aa) ) {
-			// set next midnight, *local* time
-			$tm = self::tm_next_12meridian();
+		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron',
+			self::$wp_cron_arg) ) {
+			// set *previous* midnight, *local* time -- there is
+			// something very fragile about the wp cron facility:
+			// tough to get it to actually work
+			$tm = time(); // self::tm_next_12meridian(); // - 86400;
 			wp_schedule_event(
-				$tm, $aa[0], 'Spam_BLIP_plugin_cron', $aa);
+				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
+					self::$wp_cron_arg);
 		}
 		// action for cron callback
 		$aa = array($cl, 'action_static_cron');
@@ -1260,6 +1282,9 @@ class Spam_BLIP_class {
 			$opts[$k] = $v;
 		}
 	
+		// special handling of errors in textarea pairs: see near end
+		$pairerr = array();
+		
 		foreach ( $opts as $k => $v ) {
 			if ( ! array_key_exists($k, $a_orig) ) {
 				// this happens for the IDs of extra form items
@@ -1367,7 +1392,8 @@ class Spam_BLIP_class {
 								self::wt($e), 'error');
 							// error counter
 							$nerr++;
-							
+							// for special handling
+							$pairerr[] = $k;
 							// signal error post-loop
 							$t = false;
 							break;
@@ -1386,6 +1412,7 @@ class Spam_BLIP_class {
 						$a_out[$k] = $oo;
 					}
 					break;
+				// textarea pairs
 				case self::opteditrbl:
 				case self::opteditrbr:
 					$t = explode("\n", $ot);
@@ -1417,7 +1444,8 @@ class Spam_BLIP_class {
 								self::wt($e), 'error');
 							// error counter
 							$nerr++;
-							
+							// for special handling
+							$pairerr[] = $k;
 							// signal error post-loop
 							$t = false;
 							break;
@@ -1473,6 +1501,41 @@ class Spam_BLIP_class {
 							self::opt_group, self::ht($k)),
 						self::wt($e), 'error');
 					$nerr++;
+			}
+		}
+		
+		// for text area pairs: a line might have been moved
+		// from one to the other; if this other now has an
+		// error, the line is lost with the rejected changes:
+		// therefore, both must have changes rejected
+		foreach ( $pairerr as $k ) {
+			switch ( $k ) {
+				case self::opteditwhl:
+					$k = self::opteditwhr;
+					break;
+				case self::opteditwhr:
+					$k = self::opteditwhl;
+					break;
+				case self::opteditbll:
+					$k = self::opteditblr;
+					break;
+				case self::opteditblr:
+					$k = self::opteditbll;
+					break;
+				case self::opteditrbl:
+					$k = self::opteditrbr;
+					break;
+				case self::opteditrbr:
+					$k = self::opteditrbl;
+					break;
+				default:
+					continue;
+			}
+
+			$v = array_key_exists($k, $a_orig) ? $a_orig[$k] : '';
+			if ( array_key_exists($k, $a_out) && $a_out[$k] !== $v ) {
+				$nupd--;
+				$a_out[$k] = $v;
 			}
 		}
 
@@ -2010,11 +2073,16 @@ class Spam_BLIP_class {
 		$k = self::optttldata;
 		$group = self::opt_group;
 		$va = array(
-			array(__('One (1) hour', 'spambl_l10n'), ''.(3600)),
-			array(__('Six (6) hours', 'spambl_l10n'), ''.(3600*6)),
-			array(__('Twelve (12) hours', 'spambl_l10n'), ''.(3600*12)),
-			array(__('One (1) day', 'spambl_l10n'), ''.(3600*24)),
-			array(__('One (1) week', 'spambl_l10n'), ''.(3600*24*7)),
+			array(__('One (1) hour, %s seconds', 'spambl_l10n'),
+				''.(3600)),
+			array(__('Six (6) hours, %s seconds', 'spambl_l10n'),
+				''.(3600*6)),
+			array(__('Twelve (12) hours, %s seconds', 'spambl_l10n'),
+				''.(3600*12)),
+			array(__('One (1) day, %s seconds', 'spambl_l10n'),
+				''.(3600*24)),
+			array(__('One (1) week, %s seconds', 'spambl_l10n'),
+				''.(3600*24*7)),
 			array(__('Set a value in seconds:', 'spambl_l10n'), ''.(0))
 		);
 
@@ -2026,6 +2094,9 @@ class Spam_BLIP_class {
 			$txt = self::wt($oa[0]);
 			$tim = $oa[1];
 			$chk = '';
+			if ( $tim !== '0' ) {
+				$txt = sprintf($txt, $tim);
+			}
 			if ( $tim === '0' ) { // field entry
 				if ( ! $bhit ) {
 					$chk = 'checked="checked" ';
@@ -2520,6 +2591,9 @@ class Spam_BLIP_class {
 
 	// action called from cron hook; 
 	public static function action_static_cron($what) {
+		if ( is_array($what) ) {
+			$what = $what[0];
+		}
 		switch ( $what ) {
 			case self::maint_intvl:
 				$inst = self::get_instance(); // can call repeatedly
