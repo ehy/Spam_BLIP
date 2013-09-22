@@ -838,7 +838,7 @@ class Spam_BLIP_class {
 			// set *previous* midnight, *local* time -- there is
 			// something very fragile about the wp cron facility:
 			// tough to get it to actually work
-			$tm = time(); //self::tm_next_12meridian(); // - 86400;
+			$tm = self::tm_next_12meridian();
 			wp_schedule_event(
 				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
 					self::$wp_cron_arg);
@@ -974,7 +974,7 @@ class Spam_BLIP_class {
 			// set *previous* midnight, *local* time -- there is
 			// something very fragile about the wp cron facility:
 			// tough to get it to actually work
-			$tm = time(); // self::tm_next_12meridian(); // - 86400;
+			$tm = self::tm_next_12meridian();
 			wp_schedule_event(
 				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
 					self::$wp_cron_arg);
