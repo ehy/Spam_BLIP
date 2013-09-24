@@ -227,8 +227,8 @@ class Spam_BLIP_class {
 
 	// db maintenance interval; arg to WP cron
 	//const maint_intvl = 'hourly';
-	const maint_intvl = 'twicedaily.';
-	//const maint_intvl = 'daily.';
+	//const maint_intvl = 'twicedaily.';
+	const maint_intvl = 'daily.';
 	// array to hold arg to wp_schedule_event:
 	private static $wp_cron_arg = array(self::maint_intvl);
 
@@ -838,7 +838,7 @@ class Spam_BLIP_class {
 			// set *previous* midnight, *local* time -- there is
 			// something very fragile about the wp cron facility:
 			// tough to get it to actually work
-			$tm = self::tm_next_12meridian();
+			$tm = (int)time() - 1;
 			wp_schedule_event(
 				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
 					self::$wp_cron_arg);
@@ -974,7 +974,7 @@ class Spam_BLIP_class {
 			// set *previous* midnight, *local* time -- there is
 			// something very fragile about the wp cron facility:
 			// tough to get it to actually work
-			$tm = self::tm_next_12meridian();
+			$tm = (int)time() - 1;
 			wp_schedule_event(
 				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
 					self::$wp_cron_arg);
