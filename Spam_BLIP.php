@@ -229,6 +229,9 @@ class Spam_BLIP_class {
 	const aclv = '0_0_2b';
 
 	// db maintenance interval; arg to WP cron
+	// WHACK: only 'hourly' works; the others get
+	// one initial invocation, and then never again!
+	// No more time for this now
 	const maint_intvl = 'hourly';
 	//const maint_intvl = 'twicedaily.';
 	//const maint_intvl = 'daily.';
@@ -256,17 +259,12 @@ class Spam_BLIP_class {
 	// if true do data store maintenance in shutdown hook
 	protected $do_db_maintain;
 
-	// Spam_BLIP_plugin program css name
-	protected static $Spam_BLIP_cssname = 'Spam_BLIP.css';
-	// Spam_BLIP_plugin program css path
-	protected $Spam_BLIP_css;
-
-	// Spam_BLIP_plugin js subdirectory
-	protected static $Spam_BLIP_jsdir = 'js';
-	// Spam_BLIP_plugin js shortcode editor helper name
-	protected static $Spam_BLIP_jsname = 'screens.js';
-	// Spam_BLIP_plugin program js path
-	protected $Spam_BLIP_js;
+	// js subdirectory
+	protected static $settings_jsdir = 'js';
+	// js file for settings page
+	protected static $settings_jsname = 'screens.js';
+	// js path, built in ctor
+	protected $settings_js;
 	// JS: name of class to control textare/button pairs
 	const js_textpair_ctl = 'evhplg_ctl_textpair';
 
@@ -291,10 +289,8 @@ class Spam_BLIP_class {
 		// meant to provide options and such
 		$pf = self::mk_pluginfile();
 		// URL setup
-		$t = self::$plugindir . '/' . self::$Spam_BLIP_cssname;
-		$this->Spam_BLIP_css = plugins_url($t, $pf);
-		$t = self::$Spam_BLIP_jsdir . '/' . self::$Spam_BLIP_jsname;
-		$this->Spam_BLIP_js = plugins_url($t, $pf);
+		$t = self::$settings_jsdir . '/' . self::$settings_jsname;
+		$this->settings_js = plugins_url($t, $pf);
 		
 		$this->rbl_result = false;
 		$this->dbl_result = false;
@@ -763,8 +759,8 @@ class Spam_BLIP_class {
 	}
 
 	public function settings_js() {
-		$jsfn = self::$Spam_BLIP_jsname;
-		$j = $this->Spam_BLIP_js;
+		$jsfn = self::$settings_jsname;
+		$j = $this->settings_js;
         wp_enqueue_script($jsfn, $j);
 	}
 
