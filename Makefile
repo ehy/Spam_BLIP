@@ -21,8 +21,8 @@ SRCS = ${PRJSTEM}.php \
 POTSRCS = ${PRJSTEM}.php
 
 JSDIR = js
-JSBIN = $(JSDIR)/$(PRJSTEM).js
-JSSRC = $(JSDIR)/$(PRJSTEM).dev.js
+JSBIN = $(JSDIR)/screens.js
+JSSRC = $(JSDIR)/screens.dev.js
 
 LCDIR = locale
 #LCDOM = $(PRJSTEM)_l10n
@@ -57,10 +57,11 @@ ${PRJZIP}: ${JSBIN} ${ZALL} ${LCFPO}
 	test -e ttd && mv ttd ${PRJDIR}; ls -l ${PRJZIP}
 
 ${JSBIN}: ${JSSRC}
-	(P=`which perl` && $$P -e 'use JavaScript::Minifier qw(minify);minify(input=>*STDIN,outfile=>*STDOUT)' < ${JSSRC} > ${JSBIN} 2>/dev/null) \
+	O=$@; I=$${O%.*}.dev.js; \
+	(P=`which perl` && $$P -e 'use JavaScript::Minifier qw(minify);minify(input=>*STDIN,outfile=>*STDOUT)' < "$$I" > "$$O" 2>/dev/null) \
 	|| (P=`which perl` && $$P -e \
-		'use JavaScript::Packer;$$p=JavaScript::Packer->init();$$o=join("",<STDIN>);$$p->minify(\$$o,{"compress"=>"clean"});print STDOUT $$o;' < ${JSSRC} > ${JSBIN}) \
-	|| cp -f ${JSSRC} ${JSBIN}
+		'use JavaScript::Packer;$$p=JavaScript::Packer->init();$$o=join("",<STDIN>);$$p->minify(\$$o,{"compress"=>"clean"});print STDOUT $$o;' < "$$I" > "$$O") \
+	|| cp -f "$$I" "$$O"
 
 en_US-mo $(LCFPO): $(LCPOT)
 	@echo Making $(LCFPO).

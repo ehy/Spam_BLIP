@@ -116,6 +116,9 @@ class Spam_BLIP_class {
 	// for debugging: set false for release
 	const DBG = true;
 	
+	// web page as of release
+	const plugin_webpage = 'http://agalena.nfshost.com/b1/?page_id=';
+	
 	// the widget class name
 	const Spam_BLIP_plugin_widget = 'Spam_BLIP_widget_class';
 	
@@ -226,9 +229,9 @@ class Spam_BLIP_class {
 	const aclv = '0_0_2b';
 
 	// db maintenance interval; arg to WP cron
-	//const maint_intvl = 'hourly';
+	const maint_intvl = 'hourly';
 	//const maint_intvl = 'twicedaily.';
-	const maint_intvl = 'daily.';
+	//const maint_intvl = 'daily.';
 	// array to hold arg to wp_schedule_event:
 	private static $wp_cron_arg = array(self::maint_intvl);
 
@@ -261,11 +264,11 @@ class Spam_BLIP_class {
 	// Spam_BLIP_plugin js subdirectory
 	protected static $Spam_BLIP_jsdir = 'js';
 	// Spam_BLIP_plugin js shortcode editor helper name
-	protected static $Spam_BLIP_jsname = 'Spam_BLIP.js';
+	protected static $Spam_BLIP_jsname = 'screens.js';
 	// Spam_BLIP_plugin program js path
 	protected $Spam_BLIP_js;
 	// JS: name of class to control textare/button pairs
-	const js_textpair_ctl = 'spblip_ctl_textpair';
+	const js_textpair_ctl = 'evhplg_ctl_textpair';
 
 	// hold an instance
 	private static $instance = null;
@@ -584,13 +587,13 @@ class Spam_BLIP_class {
 		// prepare admin page specific hooks per page. e.g.:
 		if ( false ) {
 			$suffix_hooks = array(
-				'admin_head' => array($this, 'admin_head'),
+				'admin_head' => array($this, 'settings_head'),
 				'admin_print_scripts' => array($this, 'settings_js'),
 				'load' => array($this, 'admin_load')
 			);
 		} else {
 			$suffix_hooks = array(
-				'admin_head' => array($this, 'admin_head'),
+				'admin_head' => array($this, 'settings_head'),
 				'admin_print_scripts' => array($this, 'settings_js'),
 			);
 		}
@@ -636,18 +639,13 @@ class Spam_BLIP_class {
 		return false;
 	}
 
-	public function admin_head() {
+	public function settings_head() {
 		// get_current_screen() introduced in WP 3.1
 		// (thus spake codex)
 		// I have 3.0.2 to test with, and 3.3.1, nothing in between,
 		// so 3.3 will be used as minimum
-		global $wp_version;
-		$va = explode('.', $wp_version);
-		$v = (int)$va[0] << 8;
-		if ( count($va) > 1 ) {
-			$v += (int)$va[1];
-		}
-		$ok = $v >= ((3 << 8) + 3);
+		$v = (3 << 24) | (3 << 16) | (0 << 8) | 0;
+		$ok = self::wpv_min($v);
 
 		$t = array(
 			self::wt(sprintf(
@@ -719,13 +717,12 @@ class Spam_BLIP_class {
 		// 'For more information:'; using translation
 		// from default textdomain (WP core)
 		$tt = self::wt(sprintf(
-			__('<p><strong>%s</strong></p<p>
-			Online help and tips can be found at the
-			<a href="http://agalena.nfshost.com/b1/" target="_blank">
-			web site
-			</a>.
+			__('<p><strong>%s</strong></p><p>
+			Tips and explanations can be found on the
+			<a href="%s" target="_blank">web page</a>.
 			</p>', 'spambl_l10n'),
-			__('For more information:')
+			__('For more information:'),
+			self::plugin_webpage
 		));
 	
 		// finagle the "Screen Options" tab
@@ -819,11 +816,15 @@ class Spam_BLIP_class {
 			array($wreg, 'validate_opts'));
 
 		// un-setup cron job for e.g, db table maintenance
-		wp_clear_scheduled_hook('Spam_BLIP_plugin_cron',
+		// NOTE on action hook name: from WP codex doc:
+		// "For some reason there seems to be a problem
+		// on some systems where the hook must not
+		// contain underscores or uppercase characters."
+		wp_clear_scheduled_hook('spamblipplugincronact',
 			self::$wp_cron_arg);
 		// action for cron callback
 		$aa = array($wreg, 'action_static_cron');
-		remove_action('Spam_BLIP_plugin_cron', $aa);
+		remove_action('spamblipplugincronact', $aa);
 	}
 
 	// activate setup
@@ -833,14 +834,14 @@ class Spam_BLIP_class {
 		add_action('widgets_init', $aa, 1);
 
 		// setup cron job for e.g, db table maintenance
-		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron',
+		if ( ! wp_next_scheduled('spamblipplugincronact',
 			self::$wp_cron_arg) ) {
 			// set *previous* midnight, *local* time -- there is
 			// something very fragile about the wp cron facility:
 			// tough to get it to actually work
-			$tm = (int)time() - 1;
+			$tm = time();
 			wp_schedule_event(
-				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
+				$tm, self::maint_intvl, 'spamblipplugincronact',
 					self::$wp_cron_arg);
 		}
 	}
@@ -864,7 +865,7 @@ class Spam_BLIP_class {
 
 		// un-setup cron job for e.g, db table maintenance
 		$aa = array(self::maint_intvl);
-		wp_clear_scheduled_hook('Spam_BLIP_plugin_cron',
+		wp_clear_scheduled_hook('spamblipplugincronact',
 			self::$wp_cron_arg);
 	}
 
@@ -944,7 +945,9 @@ class Spam_BLIP_class {
 				 self::get_usedata_option() != 'false' ) {
 				$this->db_create_table();
 	
-				if ( defined('WP_ALLOW_REPAIR') ) {
+				// not sufficiently certain about this; we
+				// do our own maintenance anyway
+				if ( false && defined('WP_ALLOW_REPAIR') ) {
 					$aa = array($this, 'filter_tables_to_repair');
 					add_filter('tables_to_repair', $aa, 100);
 				}
@@ -969,19 +972,19 @@ class Spam_BLIP_class {
 		add_action('shutdown', $aa, 200);
 
 		// setup cron job for e.g, db table maintenance
-		if ( ! wp_next_scheduled('Spam_BLIP_plugin_cron',
+		if ( ! wp_next_scheduled('spamblipplugincronact',
 			self::$wp_cron_arg) ) {
 			// set *previous* midnight, *local* time -- there is
 			// something very fragile about the wp cron facility:
 			// tough to get it to actually work
-			$tm = (int)time() - 1;
+			$tm = time();
 			wp_schedule_event(
-				$tm, self::maint_intvl, 'Spam_BLIP_plugin_cron',
+				$tm, self::maint_intvl, 'spamblipplugincronact',
 					self::$wp_cron_arg);
 		}
 		// action for cron callback
 		$aa = array($cl, 'action_static_cron');
-		add_action('Spam_BLIP_plugin_cron', $aa);
+		add_action('spamblipplugincronact', $aa);
 	}
 
 	// add_filter('tables_to_repair', $scf, 1);
@@ -1172,6 +1175,39 @@ class Spam_BLIP_class {
 			return wptexturize($text);
 		}
 		return self::ht($text);
+	}
+	
+	// get WP software version as int (at least 32 bit, major < 128)
+	public static function wpv_int() {
+		static $wp_vi = null;
+		if ( $wp_vi === null ) {
+			global $wp_version;
+			$v = 0;
+			$va = explode('.', $wp_version);
+			for ( $i = 0; $i < 4; $i++ ) {
+				if ( ! isset($va[$i]) ) {
+					break;
+				}
+				$v |= ((int)$va[$i] << ((3 - $i) * 8));
+			}
+			$wp_vi = $v;
+		}
+		return $wp_vi;
+	}
+	
+	// compare WP software version -- 1 if wp > cmp val,
+	// -1 if <, else 0
+	public static function wpv_cmp($cv) {
+		$wv = self::wpv_int();
+		$cv = (int)$cv;
+		if ( $cv < $wv ) return 1;
+		if ( $cv > $wv ) return -1;
+		return 0;
+	}
+	
+	// compare WP software version
+	public static function wpv_min($cv) {
+		return (self::wpv_cmp($cv) >= 0) ? true : false;
 	}
 	
 	// error messages; where {wp_}die is not suitable
@@ -1631,7 +1667,7 @@ class Spam_BLIP_class {
 		echo '</div>';
 		?>
 		<script type="text/javascript">
-		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		addto_evhplg_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
 
@@ -1724,7 +1760,7 @@ class Spam_BLIP_class {
 		echo '</div>';
 		?>
 		<script type="text/javascript">
-		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		addto_evhplg_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
 
@@ -1808,7 +1844,7 @@ class Spam_BLIP_class {
 		echo '</div>';
 		?>
 		<script type="text/javascript">
-		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		addto_evhplg_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
 
@@ -1897,7 +1933,7 @@ class Spam_BLIP_class {
 		echo '</div>';
 		?>
 		<script type="text/javascript">
-		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		addto_evhplg_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
 
@@ -1941,7 +1977,7 @@ class Spam_BLIP_class {
 		echo '</div>';
 		?>
 		<script type="text/javascript">
-		addto_spblip_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
+		addto_evhplg_obj_screenopt("verbose_show-hide", "<?php echo $did ?>");
 		</script>
 		<?php
 
@@ -1975,7 +2011,7 @@ class Spam_BLIP_class {
 			$ltxid, $rtxid, $lbtid, $rbtid, $dbg_span);
 	?>
 	
-		<table id="spblip_tbl1"><tbody>
+		<table id="<?php echo $tableid; ?>"><tbody>
 			<tr>
 				<td align="left">
 					<label for="<?php echo $ltxid; ?>"><?php echo $ltxlb; ?></label>						
@@ -2244,16 +2280,18 @@ class Spam_BLIP_class {
 			'ltxid' => $ol,
 			'rtxid' => $or,
 			// incr for each, button IDs
-			'lbtid' => 'spblip_buttxpair_2_l',
-			'rbtid' => 'spblip_buttxpair_2_r',
+			'lbtid' => 'evhplg_buttxpair_2_l',
+			'rbtid' => 'evhplg_buttxpair_2_r',
 			// TRANSLATORS: these are buttons below textarea elements,
 			// effect is to move a line of text from one to the other;
 			// '<<' and '>>' should suggest movement left and right
 			// do not use html entities
 			'lbttx' => self::wt(__('Move address right >>')),
 			'rbttx' => self::wt(__('<< Move address left')),
+			// incr for each, table element
+			'tableid' => 'evhplg_tpair_table2',
 			// incr for each, debug span element
-			'dbg_span' => 'spblip_debug_span2',
+			'dbg_span' => 'evhplg_debug_span2',
 			// JS control class name - a plugin class const
 			'classname' => self::js_textpair_ctl,
 			// incr for each, up to 6, or add more in JS
@@ -2302,16 +2340,18 @@ class Spam_BLIP_class {
 			'ltxid' => $ol,
 			'rtxid' => $or,
 			// incr for each, button IDs
-			'lbtid' => 'spblip_buttxpair_3_l',
-			'rbtid' => 'spblip_buttxpair_3_r',
+			'lbtid' => 'evhplg_buttxpair_3_l',
+			'rbtid' => 'evhplg_buttxpair_3_r',
 			// TRANSLATORS: these are buttons below textarea elements,
 			// effect is to move a line of text from one to the other;
 			// '<<' and '>>' should suggest movement left and right
 			// do not use html entities
 			'lbttx' => self::wt(__('Move address right >>')),
 			'rbttx' => self::wt(__('<< Move address left')),
+			// incr for each, table element
+			'tableid' => 'evhplg_tpair_table3',
 			// incr for each, debug span element
-			'dbg_span' => 'spblip_debug_span3',
+			'dbg_span' => 'evhplg_debug_span3',
 			// JS control class name - a plugin class const
 			'classname' => self::js_textpair_ctl,
 			// incr for each, up to 6, or add more in JS
@@ -2369,16 +2409,18 @@ class Spam_BLIP_class {
 			'ltxid' => $ol,
 			'rtxid' => $or,
 			// incr for each, button IDs
-			'lbtid' => 'spblip_buttxpair_1_l',
-			'rbtid' => 'spblip_buttxpair_1_r',
+			'lbtid' => 'evhplg_buttxpair_1_l',
+			'rbtid' => 'evhplg_buttxpair_1_r',
 			// TRANSLATORS: these are buttons below textarea elements,
 			// effect is to move a line of text from one to the other;
 			// '<<' and '>>' should suggest movement left and right
 			// do not use html entities
 			'lbttx' => self::wt(__('Move line right >>')),
 			'rbttx' => self::wt(__('<< Move line left')),
+			// incr for each, table element
+			'tableid' => 'evhplg_tpair_table1',
 			// incr for each, debug span element
-			'dbg_span' => 'spblip_debug_span1',
+			'dbg_span' => 'evhplg_debug_span1',
 			// JS control class name - a plugin class const
 			'classname' => self::js_textpair_ctl,
 			// incr for each, up to 6, or add more in JS

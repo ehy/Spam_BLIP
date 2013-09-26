@@ -16,15 +16,17 @@
 //
 
 /**
- * For option/settings page of Spam_BLIP plugin
- * Controller for 'Screen Options'
+ * For plugin option/settings page:
+ * Controller for 'Screen Options' -- hide/show (toggle
+ * .style.display "none" : "block") of div element containing
+ *  introductory text (or whatever)
  */
-var spblip_ctl_screenopt = function (id_chk) {
+var evhplg_ctl_screenopt = function (id_chk) {
 	this.chk = document.getElementById(id_chk);
 	this.chk.spbl = this;
 	this.chk.addEventListener('click', this.clk, false);
 };
-spblip_ctl_screenopt.prototype = {
+evhplg_ctl_screenopt.prototype = {
 	chk : null,
 	all : {},
 	add : function (id) {
@@ -41,21 +43,21 @@ spblip_ctl_screenopt.prototype = {
 		return false;
 	}
 };
-var spblip_obj_screenopt = {};
-function addto_spblip_obj_screenopt(id, target) {
-	if ( spblip_obj_screenopt[id] == undefined )
-		spblip_obj_screenopt[id] = new spblip_ctl_screenopt(id);
-	spblip_obj_screenopt[id].add(target);
+var evhplg_obj_screenopt = {};
+function addto_evhplg_obj_screenopt(id, target) {
+	if ( evhplg_obj_screenopt[id] == undefined )
+		evhplg_obj_screenopt[id] = new evhplg_ctl_screenopt(id);
+	evhplg_obj_screenopt[id].add(target);
 };
 
 /**
- * For option/settings page of Spam_BLIP plugin
+ * For plugin option/settings page forms: textarea pairs
  * Transfer whole lines from one textarea to another,
  * in response to one of two buttons (actually, any elements
  * with a click event)
  */
 
-var spblip_ctl_textpair = function (id_tl, id_tr, id_bl, id_br, dbg) {
+var evhplg_ctl_textpair = function (id_tl, id_tr, id_bl, id_br, dbg) {
 	this.tx_l = document.getElementById(id_tl);
 	this.tx_l.spbl = this;
 	this.tx_l.addEventListener('dblclick', this.clk_tx, false);
@@ -75,7 +77,7 @@ var spblip_ctl_textpair = function (id_tl, id_tr, id_bl, id_br, dbg) {
 	}
 };
 
-spblip_ctl_textpair.prototype = {
+evhplg_ctl_textpair.prototype = {
 	tx_l : null,
 	tx_r : null,
 	bt_l : null,
@@ -187,9 +189,9 @@ spblip_ctl_textpair.prototype = {
 			this.dbg.innerHTML += '<br/>' + msg;
 		}
 	}
-}; // spblip_ctl_textpair
+}; // evhplg_ctl_textpair
 
-var spblip_ctl_textpair_objmap = {
+var evhplg_ctl_textpair_objmap = {
 	form_1 : null,
 	form_2 : null,
 	form_3 : null,
