@@ -3979,6 +3979,9 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		// show set options
 		if ( $showopt === true ) {
 
+			printf("\n\t<{$htype}>%s</{$htype}>",
+				$wt(__('Options:', 'spambl_l10n'))
+			);
 			echo "\n\t<ul>";
 			if ( $bc != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
@@ -4014,9 +4017,11 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		}
 		
 		if ( $inf ) {
-			printf("\n\t<{$htype}>%s</{$htype}><ul>",
-				$wt(__('Information:', 'spambl_l10n'))
+			printf("\n\t<{$htype}>%s</{$htype}>",
+				$wt(__('Records:', 'spambl_l10n'))
 			);
+			echo "\n\t<ul>";
+
 			// keys for desired info, in order
 			$kord = array('row_count', 'white', 'black', 'non', 'tor',
 						'hour', 'hourinit', 'day', 'dayinit', 'week',
@@ -4036,15 +4041,15 @@ class Spam_BLIP_widget_class extends WP_Widget {
 						break;
 					case 'white':
 						printf("\n\t\t<li>%s</li>",
-							sprintf($wt(_n('%d whitelist address',
-							   '%d whitelist addresses',
+							sprintf($wt(_n('%d user whitelist address',
+							   '%d user whitelist addresses',
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
 					case 'black':
 						printf("\n\t\t<li>%s</li>",
-							sprintf($wt(_n('%d blacklist address',
-							   '%d blacklist addresses',
+							sprintf($wt(_n('%d user blacklist address',
+							   '%d user blacklist addresses',
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;

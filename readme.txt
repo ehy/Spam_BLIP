@@ -9,7 +9,7 @@ License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 Text Domain: spambl_l10n
 
-Spam_BLIP provides a flash video player for posts and pages, and a widget, and forms to configure display and video playback.
+Spam BLIP stops comment spam before it is posted, using DNS lists, existing comments marked as spam, and user lists.
 
 == Description ==
 
