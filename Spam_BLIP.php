@@ -325,6 +325,7 @@ class Spam_BLIP_class {
 	}
 
 	public function __destruct() {
+		// FPO
 		$this->opt = null;
 	}
 	
@@ -785,19 +786,6 @@ class Spam_BLIP_class {
 	 * General hook/filter callbacks
 	 */
 	
-	// register shortcode editor forms javascript
-	/**
-	public static function filter_admin_print_scripts() {
-	    if ( false && $GLOBALS['editing'] && current_user_can('edit_posts') ) {
-			$jsfn = 'Spam_BLIP_plugin_java_object';
-			$pf = self::mk_pluginfile();
-			$t = self::$swfjsdir . '/' . self::$swfxedjsname;
-			$jsfile = plugins_url($t, $pf);
-	        wp_enqueue_script($jsfn, $jsfile, array('jquery'), 'xed');
-	    }
-	}
-	*/
-
 	// deactivate cleanup
 	public static function on_deactivate() {
 		$wreg = __CLASS__;
@@ -1129,17 +1117,6 @@ class Spam_BLIP_class {
 		return self::$pluginfile = $pf . '/' . $ff;
 	}
 
-	// escape symbol for use in jQuery selector or similar; see
-	//     http://api.jquery.com/category/selectors/
-	public static function esc_jqsel($sym, $include_dash = false) {
-		$chr = '!"#$%&\'()*+,.\/:;<=>?@\[\]\^`{|}~';
-		if ( $include_dash === true )
-			$chr .= '-';
-		$pat = '/([' . $chr . '])/';
-		$rep = '\\\\\\\$1';
-		return preg_replace($pat, $rep, $sym);
-	}
-
 	// hex encode a text string
 	public static function et($text) {
 		return rawurlencode($text);
@@ -1257,6 +1234,10 @@ class Spam_BLIP_class {
 	// $tm should generally be time() now, or leave it null
 	// if $local is true then get local offset value, else UTC
 	// if $noon is false get next midnight, else next noon
+	/**
+	 * COMMENTED: this was to be used setting up the WP cron
+	 * schedule, but since I can get *nothing* but 'hourly'
+	 * to work, this is pointless -- it remains here just in case . . .
 	public static function tm_next_12meridian(
 		$tm = null, $local = true, $noon = false
 		) {
@@ -1273,6 +1254,7 @@ class Spam_BLIP_class {
 		}
 		return $t;
 	}
+	*/
 
 	// optional additional response to unexpected REMOTE_ADDR;
 	// after errlog()
@@ -1909,8 +1891,8 @@ class Spam_BLIP_class {
 			"ignore": no comparison at this index). The fields may
 			contain whitespace for clarity.
 			The default
-			for any field that is not present is "==", and so if
-			the whole third part is absent then a DNS lookup
+			for any field that is not present is "<code>==</code>",
+			so if the whole third part is absent then a DNS lookup
 			return is checked for complete equality with the value
 			of the second part.
 			', 'spambl_l10n'));
@@ -3896,7 +3878,7 @@ endif; // if ( ! class_exists('Spam_BLIP_class') ) :
 
 
 /**
- * class for Spam_BLIP as widget
+ * class for Spam BLIP info widget
  */
 if ( ! class_exists('Spam_BLIP_widget_class') ) :
 class Spam_BLIP_widget_class extends WP_Widget {
@@ -3978,11 +3960,11 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 		// show set options
 		if ( $showopt === true ) {
-
 			printf("\n\t<{$htype}>%s</{$htype}>",
 				$wt(__('Options:', 'spambl_l10n'))
 			);
 			echo "\n\t<ul>";
+
 			if ( $bc != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
 					$wt(__('Checking for comment spam', 'spambl_l10n'))
