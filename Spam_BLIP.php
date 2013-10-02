@@ -260,9 +260,9 @@ class Spam_BLIP_class {
 	protected $do_db_maintain;
 
 	// js subdirectory
-	protected static $settings_jsdir = 'js';
+	const settings_jsdir = 'js';
 	// js file for settings page
-	protected static $settings_jsname = 'screens.js';
+	const settings_jsname = 'screens.js';
 	// js path, built in ctor
 	protected $settings_js;
 	// JS: name of class to control textare/button pairs
@@ -289,7 +289,7 @@ class Spam_BLIP_class {
 		// meant to provide options and such
 		$pf = self::mk_pluginfile();
 		// URL setup
-		$t = self::$settings_jsdir . '/' . self::$settings_jsname;
+		$t = self::settings_jsdir . '/' . self::settings_jsname;
 		$this->settings_js = plugins_url($t, $pf);
 		
 		$this->rbl_result = false;
@@ -759,7 +759,7 @@ class Spam_BLIP_class {
 	}
 
 	public function settings_js() {
-		$jsfn = self::$settings_jsname;
+		$jsfn = self::settings_jsname;
 		$j = $this->settings_js;
         wp_enqueue_script($jsfn, $j);
 	}
@@ -3850,11 +3850,32 @@ EOQ;
 			$r['htotal'] = $a[0][0];
 		}
 
+		$w = 'white';
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
+			$r['k'][] = 'white';
+			$r['white'] = $a[0][0];
+		}
+		
+		$w = 'black';
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
+			$r['k'][] = 'black';
+			$r['black'] = $a[0][0];
+		}
+
 		$w = 'torx';
 		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'tor';
 			$r['tor'] = $a[0][0];
+		}
+		
+		$w = 'non';
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
+			$r['k'][] = 'non';
+			$r['non'] = $a[0][0];
 		}
 		
 		$tf = self::best_time() - $tf;
@@ -3887,7 +3908,7 @@ class Spam_BLIP_widget_class extends WP_Widget {
 	
 		$cl = __CLASS__;
 		// Label shown on widgets page
-		$lb =  __('Spam BLIP Plugin Info', 'spambl_l10n');
+		$lb =  __('Spam BLIP', 'spambl_l10n');
 		// Description shown under label shown on widgets page
 		$desc = __('Display comment and ping spam hit information, and database table row count', 'spambl_l10n');
 		$opts = array('classname' => $cl, 'description' => $desc);
@@ -3909,8 +3930,19 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		
 		extract($args);
 
+		// get some options to show if true
 		$bc  = $this->plinst->get_comments_open_option();
 		$bp  = $this->plinst->get_pings_open_option();
+		$tw  = $this->plinst->get_torwhite_option();
+		$bo  = $this->plinst->get_bailout_option();
+		$ce  = $this->plinst->get_chkexist_option();
+		$rn  = $this->plinst->get_rec_non_option();
+		$showopt = false;
+		if ( $bc != 'false' || $bp != 'false' || $tw != 'false' ||
+			$bo != 'false' || $ce != 'false' || $rn != 'false' ) {
+			$showopt = true;
+		}
+
 		$ud  = $this->plinst->get_usedata_option();
 		$inf = false;
 		if ( $ud != 'false' && ($bc != 'false' || $bp != 'false') ) {
@@ -3927,10 +3959,13 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$cap = array_key_exists('caption', $instance)
 			? $instance['caption'] : false;
 
+		$url = array_key_exists('URL', $instance)
+			? $instance['URL'] : false;
+
 		echo $before_widget;
 
 		if ( $title ) {
-			echo $before_title . $title . $after_title;
+			printf("%s%s%s\n", $before_title, $title, $after_title);
 		}
 
 		// use no class, but do use deprecated align
@@ -3941,8 +3976,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$wt = 'wptexturize';  // display with char translations
 		$htype = 'h6';        // depends on css of theme; who knows?
 
-		if ( $bc != 'false' || $bp != 'false' ) {
-			$tw  = $this->plinst->get_torwhite_option();
+		// show set options
+		if ( $showopt === true ) {
 
 			echo "\n\t<ul>";
 			if ( $bc != 'false' ) {
@@ -3953,6 +3988,21 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			if ( $bp != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
 					$wt(__('Checking for ping spam', 'spambl_l10n'))
+				);
+			}
+			if ( $ce != 'false' ) {
+				printf("\n\t\t<li>%s</li>",
+					$wt(__('Checking in saved spam', 'spambl_l10n'))
+				);
+			}
+			if ( $bo != 'false' ) {
+				printf("\n\t\t<li>%s</li>",
+					$wt(__('Bailing out on hits', 'spambl_l10n'))
+				);
+			}
+			if ( $rn != 'false' ) {
+				printf("\n\t\t<li>%s</li>",
+					$wt(__('Saving non-hits', 'spambl_l10n'))
 				);
 			}
 			if ( $tw != 'false' ) {
@@ -3967,13 +4017,41 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			printf("\n\t<{$htype}>%s</{$htype}><ul>",
 				$wt(__('Information:', 'spambl_l10n'))
 			);
-			foreach ( $inf['k'] as $k ) {
+			// keys for desired info, in order
+			$kord = array('row_count', 'white', 'black', 'non', 'tor',
+						'hour', 'hourinit', 'day', 'dayinit', 'week',
+						'weekinit', 'htotal');
+			foreach ( $kord as $k ) {
+				if ( ! in_array($k, $inf['k'])  ) {
+					continue;
+				}
 				$v = $inf[$k];
 				switch ( $k ) {
 					case 'row_count':
 						printf("\n\t\t<li>%s</li>",
 							sprintf($wt(_n('%d address listed',
 							   '%d addresses listed',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'white':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d whitelist address',
+							   '%d whitelist addresses',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'black':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d blacklist address',
+							   '%d blacklist addresses',
+							   $v, 'spambl_l10n')), $v)
+						);
+						break;
+					case 'non':
+						printf("\n\t\t<li>%s</li>",
+							sprintf($wt(_n('%d non-hit address',
+							   '%d non-hit addresses',
 							   $v, 'spambl_l10n')), $v)
 						);
 						break;
@@ -4040,6 +4118,15 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			echo "\n\t</ul>\n";
 		}
 
+		if ( $url == 'true' ) {
+			printf(__('<br><p>
+				DNS blacklist spam checking by the
+				<a href="%s" target="_blank"><em>Spam BLIP</em></a>
+				plugin.
+				</p>', 'spambl_l10n'),
+				Spam_BLIP_class::plugin_webpage
+			);
+		}
 		if ( $cap ) {
 			echo '<p><span align="center">' .$wt($cap). '</span></p>';
 		}
@@ -4050,7 +4137,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 	}
 
 	public function update($new_instance, $old_instance) {
-		$i = array('title' => '', 'caption' => '');
+		// form ctls: URL is checkbox
+		$i = array('title' => '', 'caption' => '', 'URL' => 'false');
 		
 		if ( is_array($old_instance) ) {
 			array_merge($i, $old_instance);
@@ -4073,6 +4161,9 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		if ( ! array_key_exists('title', $i) ) {
 			$i['title'] = '';
 		}
+		if ( ! array_key_exists('URL', $i) || $i['URL'] == '' ) {
+			$i['URL'] = 'false';
+		}
 
 		return $i;
 	}
@@ -4085,7 +4176,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		// still leaves room for error; this assumes UTF-8 presently)
 		$et = 'rawurlencode'; // %XX -- for transfer
 
-		$val = array('title' => '', 'caption' => '');
+		// form ctls: URL is checkbox
+		$val = array('title' => '', 'caption' => '', 'URL' => 'false');
 		$instance = wp_parse_args((array)$instance, $val);
 
 		$val = '';
@@ -4113,6 +4205,19 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		<input class="widefat" id="<?php echo $id; ?>"
 			name="<?php echo $nm; ?>"
 			type="text" value="<?php echo $val; ?>" /></p>
+
+		<?php
+		// show URL checkbox
+		$val = $instance['URL'];
+		$id = $this->get_field_id('URL');
+		$nm = $this->get_field_name('URL');
+		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
+		$tl = $wt(__('Show <em>Spam BLIP</em> URL:&nbsp;', 'swfput_l10n'));
+		?>
+		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
+		<input class="widefat" id="<?php echo $id; ?>"
+			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
+			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
 
 		<?php
 	}
