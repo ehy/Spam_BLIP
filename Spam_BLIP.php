@@ -134,6 +134,8 @@ class Spam_BLIP_class {
 	const optcommflt = 'commflt';
 	// filter pings_open?
 	const optpingflt = 'pingflt';
+	// filter new user registration (optionally required to comment)?
+	const optregiflt = 'regiflt';
 	// pass, or 'whitelist', TOR exit nodes?
 	const opttorpass = 'torpass';
 	// record non-hit DNS lookups?
@@ -186,6 +188,8 @@ class Spam_BLIP_class {
 	const defcommflt = 'true';
 	// filter pingss_open?
 	const defpingflt = 'true';
+	// filter new user registration (optionally required to comment)?
+	const defregiflt = 'false';
 	// pass, or 'whitelist', TOR exit nodes?
 	const deftorpass = 'false';
 	// record non-hit DNS lookups?
@@ -338,6 +342,7 @@ class Spam_BLIP_class {
 				self::optverbose => self::defverbose,
 				self::optcommflt => self::defcommflt,
 				self::optpingflt => self::defpingflt,
+				self::optregiflt => self::defregiflt,
 				self::opttorpass => self::deftorpass,
 				self::optnonhrec => self::defnonhrec,
 				self::optchkexst => self::defchkexst,
@@ -356,6 +361,7 @@ class Spam_BLIP_class {
 			self::optverbose => self::defverbose,
 			self::optcommflt => self::defcommflt,
 			self::optpingflt => self::defpingflt,
+			self::optregiflt => self::defregiflt,
 			self::opttorpass => self::deftorpass,
 			self::optnonhrec => self::defnonhrec,
 			self::optchkexst => self::defchkexst,
@@ -443,6 +449,11 @@ class Spam_BLIP_class {
 				self::optpingflt,
 				$items[self::optpingflt],
 				array($this, 'put_pings_opt'));
+		$fields[$nf++] = new $Cf(self::optregiflt,
+				self::wt(__('Blacklist check user registrations:', 'spambl_l10n')),
+				self::optregiflt,
+				$items[self::optregiflt],
+				array($this, 'put_regi_opt'));
 		$fields[$nf++] = new $Cf(self::opttorpass,
 				self::wt(__('Whitelist (pass) TOR exit nodes:', 'spambl_l10n')),
 				self::opttorpass,
@@ -663,7 +674,8 @@ class Spam_BLIP_class {
 			</p><p>
 			<em>Spam BLIP</em> will work well with
 			the installed defaults, so it\'s not necessary
-			to worry over the options on this page. 
+			to worry over the options on this page (but take
+			a look at "Tips" in this help box). 
 			</p><p>
 			Remember, when any change is made, the new settings must
 			be submitted with the "%2$s" button, near the end
@@ -677,14 +689,18 @@ class Spam_BLIP_class {
 			__('<p>Although the default settings
 			will work well, consider enabling these:
 			<ul>
-			<li>"%1$s" -- because The Onion Router is a very
+			<li>"%1$s" -- to get the most broad coverage against
+			spam; but, leave this false if you <em>know</em> that
+			you want to accept user registrations for some
+			purpose even if the address is blacklisted</li>
+			<li>"%2$s" -- because The Onion Router is a very
 			important protection for <em>real</em> people, even if
 			spammers abuse it and cause associated addresses
 			to be blacklisted</li>
-			<li>"%2$s" -- if you have access to the error log
+			<li>"%3$s" -- if you have access to the error log
 			of your site server, this will give you a view
 			of what the plugin has been doing</li>
-			<li>"%3$s" -- a small bit of CPU time and network
+			<li>"%4$s" -- a small bit of CPU time and network
 			traffic will be saved when an IP address is
 			identified as a spammer (but in the case of a false
 			positive, this will seem rude)</li>
@@ -704,6 +720,7 @@ class Spam_BLIP_class {
 			It might not work in concert with other
 			DNS blacklist plugins.
 			</p>', 'spambl_l10n'),
+			__('Check blacklist for user registration', 'spambl_l10n'),
 			__('Whitelist TOR addresses', 'spambl_l10n'),
 			__('Log blacklist hits', 'spambl_l10n'),
 			__('Bail (wp_die()) on blacklist hits', 'spambl_l10n')
@@ -942,6 +959,16 @@ class Spam_BLIP_class {
 	
 			$aa = array($this, 'action_comment_closed');
 			add_action('comment_closed', $aa, 100);
+	
+			// This macro is checked in wp-login.php, but is not defined
+			// anywhere in WP core, because it is provided for special
+			// case of moving across sites, to be defined by person
+			// doing the move -- SHOULD NOT be defined otherwise, or at
+			// least should be false.
+			if ( ! (defined('RELOCATE') && RELOCATE) ) {
+				$aa = array($this, 'action_user_regi');
+				add_action('login_form_register', $aa, 100);
+			}
 	
 			$aa = array($this, 'filter_comments_open');
 			add_filter('comments_open', $aa, 100);
@@ -1482,6 +1509,7 @@ class Spam_BLIP_class {
 				case self::optverbose:
 				case self::optcommflt:
 				case self::optpingflt:
+				case self::optregiflt:
 				case self::opttorpass:
 				case self::optnonhrec:
 				case self::optchkexst:
@@ -1610,6 +1638,17 @@ class Spam_BLIP_class {
 		$t = self::wt(__('The "Blacklist check for pings" option 
 			is similar to "Blacklist check for comments",
 			but for pings.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('The "Blacklist check user registrations"
+			option enables the blacklist checks before the
+			user registration form is presented; for example, if
+			your site is configured to require login or registration
+			to post a comment. <strong>Note</strong> that this check
+			is done for all requests of the registration form, even if
+			not related to an attempt to comment. Because that
+			might not be appropriate, this option is off by
+			default.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('The "Whitelist TOR exit nodes" option 
@@ -2043,6 +2082,13 @@ class Spam_BLIP_class {
 	public function put_pings_opt($a) {
 		$tt = self::wt(__('Check blacklist for pings', 'spambl_l10n'));
 		$k = self::optpingflt;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
+	// callback, rbl filter user registration?
+	public function put_regi_opt($a) {
+		$tt = self::wt(__('Check blacklist for user registration', 'spambl_l10n'));
+		$k = self::optregiflt;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
@@ -2495,6 +2541,11 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::optpingflt);
 	}
 
+	// should the action_user_regi() rbl check be done
+	public static function get_user_regi_option() {
+		return self::opt_by_name(self::optregiflt);
+	}
+
 	// for whether to pass/whitelist tor exit nodes
 	public static function get_torwhite_option() {
 		return self::opt_by_name(self::opttorpass);
@@ -2644,7 +2695,7 @@ class Spam_BLIP_class {
 			return;
 		}		
 
-		self::dbglog('enter action_pre_comment_on_post');
+		self::dbglog('enter ' . __FUNCTION__);
 
 		// was rbl check called already? if so,
 		// use stored result
@@ -2657,7 +2708,7 @@ class Spam_BLIP_class {
 		}
 		
 		if ( $prev !== false ) {
-			self::dbglog('BAILING FROM action_pre_comment_on_post');
+			self::dbglog('BAILING FROM ' . __FUNCTION__);
 			// TRANSLATORS: polite rejection message
 			// in response to blacklisted IP address
 			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
@@ -2667,13 +2718,14 @@ class Spam_BLIP_class {
 	// this action is invoked in wp-trackback.php, last action
 	// before trackback_response(0); just after
 	// wp_new_comment($commentdata), so it is too late
-	// to prevent spam
+	// to prevent spam -- *but* pings_open() is called earlier
+	// in the block of code, and that is filtered, so it's OK.
 	//public function action_trackback_post($insert_ID) {
 		//if ( self::get_pings_open_option() != 'true' ) {
 			//return;
 		//}		
 
-		//self::dbglog('enter action_trackback_post');
+		//self::dbglog('enter ' . __FUNCTION__);
 
 		//// was rbl check called already? if so,
 		//// use stored result
@@ -2686,7 +2738,7 @@ class Spam_BLIP_class {
 		//}
 		
 		//if ( $prev !== false ) {
-			//self::dbglog('BAILING FROM action_trackback_post');
+			//self::dbglog('BAILING FROM ' . __FUNCTION__);
 			//// TRANSLATORS: polite rejection message
 			//// in response to blacklisted IP address
 			//wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
@@ -2708,6 +2760,44 @@ class Spam_BLIP_class {
 			// TRANSLATORS: polite rejection message
 			// in response to blacklisted IP address
 			echo __('Sorry, but no, thank you.', 'spambl_l10n') .'<hr>';
+		}
+	}
+
+	// add_action('login_form_' . 'register', $scf, 1) -- wp-login.php;
+	// This gets called if on new user registration, and a site
+	// may optionally require registration to comment, so this is
+	// pertinent to comment spam.
+	public function action_user_regi() {
+		// This macro is checked in wp-login.php, but is not defined
+		// anywhere in WP core, because it is provided for special
+		// case of moving across sites, to be defined by person
+		// doing the move -- SHOULD NOT be defined otherwise, or at
+		// least should be false.
+		if ( defined('RELOCATE') && RELOCATE ) {
+			return;
+		}
+
+		if ( self::get_user_regi_option() != 'true' ) {
+			return;
+		}
+
+		self::dbglog('enter ' . __FUNCTION__);
+
+		// was rbl check called already? if so,
+		// use stored result
+		$prev = $this->get_rbl_result();
+		
+		// if not done already
+		if ( $prev === null ) {
+			$this->do_db_bl_check(true, 'comments') ;
+			$prev = $this->get_rbl_result();
+		}
+		
+		if ( $prev !== false ) {
+			self::dbglog('BAILING FROM ' . __FUNCTION__);
+			// TRANSLATORS: polite rejection message
+			// in response to blacklisted IP address
+			wp_die(__('Sorry, but no, thank you.', 'spambl_l10n'));
 		}
 	}
 
