@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name: Spam_BLIP
+Plugin Name: Spam BLIP
 Plugin URI: http://agalena.nfshost.com/b1/?page_id=<CHANGE_ME>
-Description: Spam_BLIP plugin for WordPress
+Description: Stop comment spam before it is posted.
 Version: 1.0.0
 Author: Ed Hynan
 Author URI: http://agalena.nfshost.com/b1/
