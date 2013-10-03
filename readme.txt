@@ -1,7 +1,7 @@
 === Spam_BLIP ===
 Contributors: EdHynan
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick%DONATE_LINK%hosted_button_id=4Q2Y8ZUG8HXLC
-Tags: %TAGS_README%
+Tags: anti-spam, blog, comment, comments, content, links, network, plugin, post, Post, posts, security, spam, wordpress
 Requires at least: 3.0.2
 Tested up to: 3.6.1
 Stable tag: 1.0.0
@@ -112,6 +112,10 @@ Yes.
 No. The canned meat is laudable, and venerated. You are not to be
 blamed for this confusion; the blame is on something completely
 different.
+
+= Hey, how about an *authentic, genuine* imitation FAQ? =
+
+Okay. What is the 'BLIP' in "Spam BLIP"? Think 'BLacklist IP'.
 
 == Screenshots ==
 
