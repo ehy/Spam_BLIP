@@ -56,6 +56,9 @@ whether it will suit your purpose:
 
 *	Spam BLIP provides user-set whitelist and blacklist options.
 
+*	Spam BLIP provides options to check for pings/trackbacks, and
+	for user registrations (before the register form is produced).
+
 *	Spam BLIP provides options to configure a 'Time To Live' (TTL)
 	for its database records, and a maximum number of records.
 	The TTL is important because, generally, an IP address should
