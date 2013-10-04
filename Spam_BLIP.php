@@ -4072,12 +4072,14 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		// get some options to show if true
 		$bc  = $this->plinst->get_comments_open_option();
 		$bp  = $this->plinst->get_pings_open_option();
+		$br  = $this->plinst->get_user_regi_option();
 		$tw  = $this->plinst->get_torwhite_option();
 		$bo  = $this->plinst->get_bailout_option();
 		$ce  = $this->plinst->get_chkexist_option();
 		$rn  = $this->plinst->get_rec_non_option();
 		$showopt = false;
-		if ( $bc != 'false' || $bp != 'false' || $tw != 'false' ||
+		if ( $bc != 'false' || $bp != 'false' || $br != 'false' ||
+			$tw != 'false' ||
 			$bo != 'false' || $ce != 'false' || $rn != 'false' ) {
 			$showopt = true;
 		}
@@ -4130,6 +4132,11 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			if ( $bp != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
 					$wt(__('Checking for ping spam', 'spambl_l10n'))
+				);
+			}
+			if ( $br != 'false' ) {
+				printf("\n\t\t<li>%s</li>",
+					$wt(__('Checking user registration', 'spambl_l10n'))
 				);
 			}
 			if ( $ce != 'false' ) {
