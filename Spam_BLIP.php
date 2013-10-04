@@ -117,7 +117,7 @@ class Spam_BLIP_class {
 	const DBG = true;
 	
 	// web page as of release
-	const plugin_webpage = 'http://agalena.nfshost.com/b1/?page_id=';
+	const plugin_webpage = 'http://agalena.nfshost.com/b1/?page_id=211';
 	
 	// the widget class name
 	const Spam_BLIP_plugin_widget = 'Spam_BLIP_widget_class';
