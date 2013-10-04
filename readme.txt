@@ -57,7 +57,9 @@ whether it will suit your purpose:
 *	Spam BLIP provides user-set whitelist and blacklist options.
 
 *	Spam BLIP provides options to check for pings/trackbacks, and
-	for user registrations (before the register form is produced).
+	for user registrations. (The option to blacklist-check user
+	registration is off by default. See "Tips" under the help
+	tab on the Spam BLIP settings page.)
 
 *	Spam BLIP provides options to configure a 'Time To Live' (TTL)
 	for its database records, and a maximum number of records.

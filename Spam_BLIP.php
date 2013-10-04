@@ -689,10 +689,10 @@ class Spam_BLIP_class {
 			__('<p>Although the default settings
 			will work well, consider enabling these:
 			<ul>
-			<li>"%1$s" -- to get the most broad coverage against
-			spam; but, leave this false if you <em>know</em> that
+			<li>"%1$s" -- enable this for most broad coverage against
+			spam; but, leave this disabled if you <em>know</em> that
 			you want to accept user registrations for some
-			purpose even if the address is blacklisted</li>
+			purposes even if the address might be blacklisted</li>
 			<li>"%2$s" -- because The Onion Router is a very
 			important protection for <em>real</em> people, even if
 			spammers abuse it and cause associated addresses
@@ -965,7 +965,9 @@ class Spam_BLIP_class {
 			// case of moving across sites, to be defined by person
 			// doing the move -- SHOULD NOT be defined otherwise, or at
 			// least should be false.
-			if ( ! (defined('RELOCATE') && RELOCATE) ) {
+			if ( self::check_filter_user_regi() ) {
+				$aa = array($this, 'filter_user_regi');
+				add_filter('register', $aa, 100);
 				$aa = array($this, 'action_user_regi');
 				add_action('login_form_register', $aa, 100);
 			}
@@ -1005,7 +1007,7 @@ class Spam_BLIP_class {
 		return $tbls;
 	}
 
-	public static function load_translations () {
+	public static function load_translations() {
 		// The several load*() calls here are inspired by this:
 		//   http://geertdedeckere.be/article/loading-wordpress-language-files-the-right-way
 		// So, provide for custom *.mo installed in either
@@ -1289,6 +1291,34 @@ class Spam_BLIP_class {
 		// TODO: make option; send email
 	}
 
+	// For the optional blacklist check on user registration:
+	// the decision whether to do the filter|action must consider
+	// a number of factors, and the check is needed in a few
+	// places, so provide a simple boolean answer.
+	public static function check_filter_user_regi() {
+		// This macro is checked in wp-login.php, but is not defined
+		// anywhere in WP core, because it is provided for the special
+		// case of moving across hosts, and is to be defined by person
+		// doing the move, and should be removed when finished --
+		// SHOULD NOT be defined otherwise, or at
+		// least should be false.
+		if ( defined('RELOCATE') && RELOCATE ) {
+			return false;
+		}
+		// pointless to filter logged in user:
+		if ( is_user_logged_in() ) {
+			return false;
+		}
+		// this check is not really needed; installing filter anyway
+		// is cheap, and it should simply not get invoked if users
+		// cannot register
+		if ( false && ! get_option('users_can_register') ) {
+			return false;
+		}
+		
+		return true;
+	}
+	
 	/**
 	 * Settings page callback functions:
 	 * validators, sections, fields, and page
@@ -2768,16 +2798,11 @@ class Spam_BLIP_class {
 	// may optionally require registration to comment, so this is
 	// pertinent to comment spam.
 	public function action_user_regi() {
-		// This macro is checked in wp-login.php, but is not defined
-		// anywhere in WP core, because it is provided for special
-		// case of moving across sites, to be defined by person
-		// doing the move -- SHOULD NOT be defined otherwise, or at
-		// least should be false.
-		if ( defined('RELOCATE') && RELOCATE ) {
+		if ( self::get_user_regi_option() != 'true' ) {
 			return;
 		}
 
-		if ( self::get_user_regi_option() != 'true' ) {
+		if ( ! self::check_filter_user_regi() ) {
 			return;
 		}
 
@@ -2801,6 +2826,52 @@ class Spam_BLIP_class {
 		}
 	}
 
+	// add_filter('register', $scf, 1);
+	// NOTE: called for each register-link that may display.
+	// This should not be used for the DNS RBL lookup because
+	// waiting for the response can caused a noticeable stall
+	// of page loading in client.
+	// action_user_regi is used for the RBL lookup;
+	// see comment there.
+	// OTOH, this filter will look in the hit db, which is fast,
+	// and nip it in the bud early if a hit is found.
+	public function filter_user_regi($link) {
+		if ( self::get_user_regi_option() != 'true' ) {
+			return $link;
+		}
+
+		if ( ! self::check_filter_user_regi() ) {
+			return $link;
+		}
+
+		self::dbglog('enter ' . __FUNCTION__);
+
+		// was rbl check called already? if so,
+		// use stored result
+		$prev = $this->get_rbl_result();
+		
+		// if not done already
+		if ( $prev === null ) {
+			// false limits check: no DNS
+			$this->do_db_bl_check(true, 'comments', false) ;
+			$prev = $this->get_rbl_result();
+		}
+		
+		// if already done, but not a hit
+		if (  $prev === false ) {
+			return $link;
+		}
+
+		// already got a hit on this IP addr
+		// DO NOT be put alternate content in $link: the caller
+		// prepends and appends elements such as '<li>', and replacing
+		// those might have unpleasant results -- OTOH, the caller
+		// also conditionally uses the empty string, so it may
+		// be considered an appropriate return
+		$link = '';
+		return $link;
+	}
+
 	// add_filter('comments_open', $scf, 1);
 	// NOTE: this may/will be called many times per page,
 	// for each comment link on page.
@@ -2818,15 +2889,16 @@ class Spam_BLIP_class {
 
 		// was data store check called already? if so,
 		// use stored result
-		$prev = $this->dbl_result;
+		$prev = $this->get_rbl_result();
 		
 		// if not done already
-		if ( $prev === false || ! is_array($prev) ) {
+		if ( $prev === null ) {
+			// false limits check: no DNS
 			return $this->do_db_bl_check($open, 'comments', false);
 		}
 		
 		// if already done, but not a hit
-		if (  $prev[0] === false ) {
+		if (  $prev === false ) {
 			return $open;
 		}
 
