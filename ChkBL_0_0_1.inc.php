@@ -632,7 +632,7 @@ class IPReservedCheck_0_0_1 {
 }
 endif; // class_exists('IPReservedCheck_0_0_1')
 
-if ( php_sapi_name() === 'cli' ) {
+if ( false && php_sapi_name() === 'cli' ) {
 	$t = new ChkBL_0_0_1();
 	$doms = $t->get_dom_array();
 	$ipchk = new IPReservedCheck_0_0_1();

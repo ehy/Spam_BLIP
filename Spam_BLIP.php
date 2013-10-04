@@ -960,11 +960,7 @@ class Spam_BLIP_class {
 			$aa = array($this, 'action_comment_closed');
 			add_action('comment_closed', $aa, 100);
 	
-			// This macro is checked in wp-login.php, but is not defined
-			// anywhere in WP core, because it is provided for special
-			// case of moving across sites, to be defined by person
-			// doing the move -- SHOULD NOT be defined otherwise, or at
-			// least should be false.
+			// must check more than just our option for this
 			if ( self::check_filter_user_regi() ) {
 				$aa = array($this, 'filter_user_regi');
 				add_filter('register', $aa, 100);
@@ -1022,8 +1018,7 @@ class Spam_BLIP_class {
 
 		$dom = 'spambl_l10n';
 
-		if ( ! isset($WP_textdomain_done)
-			&& defined(WP_LANG_DIR) ) {
+		if ( ! isset($WP_textdomain_done) && defined('WP_LANG_DIR') ) {
 			$loc = apply_filters('plugin_locale', get_locale(), $dom);
 			// this file path is built in the manner shown at the
 			// URL above -- it does look strange
