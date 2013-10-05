@@ -2675,6 +2675,16 @@ class Spam_BLIP_class {
 		return $this->rbl_result[0];
 	}
 
+	// helper: get internal, non-BL result, return:
+	// null if no previous result, else the
+	// boolean result (true||false)
+	public function get_dbl_result() {
+		if ( ! is_array($this->dbl_result) ) {
+			return null;
+		}
+		return $this->dbl_result[0];
+	}
+
 	// anything scheduled for just before PHP shutdow: WP
 	// calls this action from its own registered
 	// PHP register_shutdown_function() callback
@@ -2781,7 +2791,7 @@ class Spam_BLIP_class {
 			return;
 		}
 		
-		if ( $this->get_rbl_result() === true ) {
+		if ( $this->get_dbl_result() === true ) {
 			// TRANSLATORS: polite rejection message
 			// in response to blacklisted IP address
 			echo __('Sorry, but no, thank you.', 'spambl_l10n') .'<hr>';
@@ -2843,13 +2853,13 @@ class Spam_BLIP_class {
 
 		// was rbl check called already? if so,
 		// use stored result
-		$prev = $this->get_rbl_result();
+		$prev = $this->get_dbl_result();
 		
 		// if not done already
 		if ( $prev === null ) {
 			// false limits check: no DNS
 			$this->do_db_bl_check(true, 'comments', false) ;
-			$prev = $this->get_rbl_result();
+			$prev = $this->get_dbl_result();
 		}
 		
 		// if already done, but not a hit
@@ -2884,7 +2894,7 @@ class Spam_BLIP_class {
 
 		// was data store check called already? if so,
 		// use stored result
-		$prev = $this->get_rbl_result();
+		$prev = $this->get_dbl_result();
 		
 		// if not done already
 		if ( $prev === null ) {
@@ -2976,6 +2986,7 @@ class Spam_BLIP_class {
 			}
 			// can't continue; set result false
 			$this->rbl_result = array(false);
+			$this->dbl_result = array(false);
 			return $def;
 		}
 
