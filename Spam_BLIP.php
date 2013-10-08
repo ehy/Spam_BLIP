@@ -3529,8 +3529,6 @@ class Spam_BLIP_class {
 			if ( $len > 0 ) {
 				$fpct = ($free * 100) / $len;
 			}
-			self::dbglog(
-				sprintf('OPT: length %d, free %d', $len, $free));
 		}
 		
 		// TODO: make an option
@@ -3548,8 +3546,12 @@ class Spam_BLIP_class {
 		$lengthmax = 1024 * 1024 * 5;
 
 		if ( $len <= $lengthmax && $fpct > $fragmax ) {
+			self::dbglog(
+				sprintf('OPTIMIZE: length %d, free %d', $len, $free));
 			$wpdb->query("OPTIMIZE TABLE {$tbl}");
 		} else if ( $analyze ) {
+			self::dbglog(
+				sprintf('ANALYZE: length %d, free %d', $len, $free));
 			$wpdb->query("ANALYZE TABLE {$tbl}");
 		}
 	}
