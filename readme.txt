@@ -13,19 +13,30 @@ Spam BLIP stops comment spam before it is posted, using DNS blacklists, existing
 
 == Description ==
 
+If you accidentally named your new twins Viagra and Nike, then
+you've been seeing those names much too much. You need Spam BLIP!
+
+Spam BLIP will get you on the first page of every Google result,
+increase your sales 1500%, and make your Viagra unnecessary!
+(Okay, so that's not really true, but what's wrong with a little
+fib for the sake of promotion? [ed.: everything])
+
+The remainder of this description is devoid of any fib, large or small.
+(Truly!)
+
 Spam BLIP stops comment and ping spam from being posted, primarily by
 checking the IP address attempting to post a comment in one or more
 of the public DNS blacklists. A number of options are available
 to refine the check, and with the option defaults, a DNS lookup
-is only performed the first time an address attempts to post a
+is only performed the first time an address *attempts to post* a
 comment; thereafter, the address might quickly 'pass' because it
 was not listed, or quickly be rejected because it was listed.
 Spam BLIP creates, and maintains, a database table for this purpose,
 and database lookups are quite fast. Therefore, concerns about
 DNS lookup time can be limited to an initial comment attempt.
 
-Here are some features of Spam BLIP to consider if you wonder
-whether it will suit your purpose:
+Here are some features of Spam BLIP to consider if you are
+not yet falling over yourself to get it installed:
 
 *	When WordPress is producing a page for a visitor, it checks
 	whether comments are open for each post, and it allows plugins
@@ -40,7 +51,7 @@ whether it will suit your purpose:
 	stores the first result, so even the fast checks are not
 	repeated.
 
-*	When a comment is being submitted, Spam BLIP does the above
+*	When a comment is actually submitted, Spam BLIP does the above
 	checks, then the DNS lookup only if necessary. At this stage,
 	if the DNS lookup causes a perceptible delay, a real human
 	(or *very* clever pet) making the comment should perceive it
@@ -91,7 +102,7 @@ whether it will suit your purpose:
 	Note that Spam BLIP is not expected to work in concert with
 	other DNS-type spam plugins.)
 
-*	Spam BLIP includes a widget that will show options and record
+*	Spam BLIP includes a widget that will show options and records
 	information. The widget might or might not be an enhancement
 	to your page, but in any case it should provide feedback
 	while you evaluate Spam BLIP, so it might be used temporarily.
