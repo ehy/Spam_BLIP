@@ -1207,6 +1207,19 @@ class Spam_BLIP_class {
 		return (self::wpv_cmp($cv) >= 0) ? true : false;
 	}
 	
+	protected static function is_mozz() {
+		static $is_so = null;
+		if ( $is_so === null ) {
+			// cannot match either Mozilla or Gecko because
+			// they appear in the compatibility assertions
+			// of not necessarily compatible browsers
+			$p = '/\bFirefox\b/';
+			$r = preg_match($p, $_SERVER['HTTP_USER_AGENT']);
+			$is_so = $r ? true : false;
+		}
+		return $is_so;
+	}
+	
 	// error messages; where {wp_}die is not suitable
 	public static function errlog($err) {
 		$e = sprintf('Spam_BLIP WP plugin: %s', $err);
@@ -2308,9 +2321,13 @@ class Spam_BLIP_class {
 		$vl = self::ht(implode("\n", $dl) . "\n");
 		$vr = self::ht(implode("\n", $dr) . "\n");
 	
+		// sigh. ffox is so generous that its textareas are
+		// much larger than others for the same dimension args
+		$mozz = self::is_mozz();
+
 		// atts for textarea
-		$txh = 4;
-		$txw = 48;
+		$txh = $mozz ? 12 : 12;
+		$txw = $mozz ? 54 : 74;
 		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
 		$txatt .= ' inputmode="verbatim" wrap="off"';
 	
@@ -2368,9 +2385,13 @@ class Spam_BLIP_class {
 		$vl = self::ht(implode("\n", $dl) . "\n");
 		$vr = self::ht(implode("\n", $dr) . "\n");
 	
+		// sigh. ffox is so generous that its textareas are
+		// much larger than others for the same dimension args
+		$mozz = self::is_mozz();
+
 		// atts for textarea
-		$txh = 4;
-		$txw = 48;
+		$txh = $mozz ? 12 : 12;
+		$txw = $mozz ? 54 : 74;
 		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
 		$txatt .= ' inputmode="verbatim" wrap="off"';
 	
@@ -2437,9 +2458,13 @@ class Spam_BLIP_class {
 		}
 		$vr = self::ht(implode("\n", $t) . "\n");
 	
+		// sigh. ffox is so generous that its textareas are
+		// much larger than others for the same dimension args
+		$mozz = self::is_mozz();
+
 		// atts for textarea
-		$txh = 4;
-		$txw = 48;
+		$txh = $mozz ? 7 : 7;
+		$txw = $mozz ? 54 : 74;
 		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
 		$txatt .= ' inputmode="verbatim" wrap="off"';
 	
