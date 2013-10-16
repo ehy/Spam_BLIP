@@ -115,7 +115,16 @@ endif;
 
 
 /**
- * class providing flash video for WP pages
+ * plugin main class
+ * use of class has several advantages; most inspiring here is
+ * the bargain-price namespace -- note that use of class does
+ * not imply commitment to rigorous OOP methodology
+ * (no 'class Int {
+ * 			int v;
+ * 			Int(int val = 0) : v(val) {}
+ * 			operator int() const {return v;}
+ * 			// . . .
+ * };', thank you.)
  */
 if ( ! class_exists('Spam_BLIP_class') ) :
 class Spam_BLIP_class {
