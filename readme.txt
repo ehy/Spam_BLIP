@@ -16,14 +16,6 @@ Spam BLIP stops comment spam before it is posted, using DNS blacklists, existing
 If you accidentally named your new twins Viagra and Nike, then
 you've been seeing those names much too much. You need Spam BLIP!
 
-Spam BLIP will get you on the first page of every Google result,
-increase your sales 1500%, and make your Viagra unnecessary!
-(Okay, so that's not really true, but what's wrong with a little
-fib for the sake of promotion? [ed.: everything])
-
-The remainder of this description is devoid of any fib, large or small.
-(Truly!)
-
 Spam BLIP stops comment and ping spam from being posted, primarily by
 checking the IP address attempting to post a comment in one or more
 of the public DNS blacklists. A number of options are available
@@ -87,7 +79,7 @@ not yet falling over yourself to get it installed:
 	TOR exit node. TOR (The Onion Router) is an important protection
 	for people who need or wish for anonymity. You may want to
 	accept comments from TOR users (you should), but unfortunately
-	spammers have exploited and abused TOR, which has led to some
+	spammers have exploited and abused TOR, which has led some
 	DNS blacklist operators to include TOR exit node addresses
 	whether or not it is known that the address is spamming. If you
 	enable this option (you should), it might let some spam get
@@ -117,11 +109,6 @@ and does not have additional requirements for installation.
 = Is this really a FAQ? =
 
 No.
-
-= If the can is opened in the woods, and there's nobody . . . =
-
- . . . there to eat it, is it really spam?
-Yes.
 
 = Is this plugin really about canned meat? =
 
