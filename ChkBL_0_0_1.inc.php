@@ -64,7 +64,10 @@ class ChkBL_0_0_1 {
 		// only 127.0.0.2 known
 		// http://spam-champuru.livedoor.com/dnsbl/
 		array('dnsbl.spam-champuru.livedoor.com', '127.0.0.2', null),
-		// only 127.0.0.1 known
+		// only 127.0.0.1 known (Note: *not* *.2)
+		// Quote from URL below: ``You may use this RBL list
+		// free of charge, currently without limit and I intend
+		// to keep it that way.''
 		// http://www.usenix.org.uk/content/rbl.html
 		array('all.s5h.net', '127.0.0.1', null)
 	);
@@ -75,6 +78,13 @@ class ChkBL_0_0_1 {
 	// IP's that few others list (dnsbl.tornevall.org
 	// lists far fewer with the comment-spam 64-mask)
 	protected static $strictdom = array(
+		// apews is in strict list because I've found TOR
+		// addresses listed *and* the FAQ states that
+		// addresses may be listed by association with
+		// known spammers or sites that host spamvertised
+		// sites -- which I think is a good thing, but I
+		// hesitate to make it default for users of a
+		// weblog plugin (for which this is written)
 		// only 127.0.0.2 known
 		// http://www.apews.org/
 		array('l2.apews.org', '127.0.0.2', null),
@@ -82,10 +92,25 @@ class ChkBL_0_0_1 {
 		// blocking TOR, which is generally not wanted
 		// dnsbl.tornevall.org returns bit pattern in least-sig octet,
 		// some bits are e.g., tor exit nodes, not tested in this
-		// default; bit value 64 is ``IP marked as "abusive host".
+		// default; bit value 64 is ``IP marked as "abusive host''.
 		// Primary target is web-form spamming (Includes dnsbl_remote)''
 		// http://dnsbl.tornevall.org/
 		array('dnsbl.tornevall.org', '127.0.0.64', '3,&')
+	);
+
+	// weblog spam DNSBLs that have not had much/any testing
+	// (DNSBL sites can be found with web searches; a couple of lists:
+	// http://multirbl.valli.org/list/ |
+	// http://www.blalert.com/dnsbls
+	// )
+	protected static $otherdom = array(
+		// only 127.0.0.2 known
+		// http://bsb.empty.us/ OR http://bsb.spamlookup.net/
+		array('bsb.empty.us', '127.0.0.2', null),
+		// has been tried, but at end of list, therefore not
+		// really evaluated -- but, has given hits
+		// http://bbq.uso800.net/code.html
+		array('niku.2ch.net', '127.0.0.2', null)
 	);
 
 	protected $doms;      // from ctor arg, or ref to $defdom, or merge
