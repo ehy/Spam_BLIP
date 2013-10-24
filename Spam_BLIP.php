@@ -521,7 +521,7 @@ class Spam_BLIP_class {
 		$sections[$ns++] = new $Cs($fields,
 				'Spam_BLIP_plugin1_datasto_section',
 				'<a name="data_store">' .
-					self::wt(__('Data Store Options', 'spambl_l10n'))
+					self::wt(__('Database Options', 'spambl_l10n'))
 					. '</a>',
 				array($this, 'put_datastore_desc'));
 		
@@ -1730,7 +1730,7 @@ class Spam_BLIP_class {
 			see "Data records TTL" below),
 			the connection
 			is considered a spammer, and the address is added
-			to the hit data store (if enabled).
+			to the hit database (if enabled).
 			The default is true.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
@@ -1750,8 +1750,8 @@ class Spam_BLIP_class {
 		$cnt = $this->db_get_rowcount();
 		if ( $cnt ) {
 			$t = self::wt(
-				_n('(There is %u record in the data store)',
-				   '(There are %u records in the data store)',
+				_n('(There is %u record in the database)',
+				   '(There are %u records in the database)',
 				   $cnt, 'spambl_l10n')
 			);
 			printf('<p>%s</p>%s', sprintf($t, $cnt), "\n");
@@ -1786,7 +1786,7 @@ class Spam_BLIP_class {
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('"Data records TTL" sets an expiration time for
-			records in the data store. The records should not be kept
+			records in the database. The records should not be kept
 			permanently, or even for very long, because the IP
 			address might not belong to the spammer, but rather
 			a conscientious ISP (also a victim of abuse by the spammer)
@@ -1821,7 +1821,7 @@ class Spam_BLIP_class {
 			turn out to be associated with a spammer and subsequently
 			be added to the online spam blacklists, but this option
 			would allow that address to post comments until its
-			record expired from the plugin data store. Also, an
+			record expired from the plugin\'s database. Also, an
 			address might be dynamic and therefore an association
 			with a welcome commenter would not be valid.
 			The default is false.', 'spambl_l10n'));
@@ -2182,7 +2182,7 @@ class Spam_BLIP_class {
 
 	// callback, ttl data store
 	public function put_ttldata_opt($a) {
-		$tt = self::wt(__('Set "Time To Live" of data store records', 'spambl_l10n'));
+		$tt = self::wt(__('Set "Time To Live" of database records', 'spambl_l10n'));
 		$k = self::optttldata;
 		$group = self::opt_group;
 		$va = array(
@@ -2241,7 +2241,7 @@ class Spam_BLIP_class {
 
 	// callback, ttl data store max records
 	public function put_maxdata_opt($a) {
-		$tt = self::wt(__('Set maximum data store records to keep', 'spambl_l10n'));
+		$tt = self::wt(__('Set number of database records to keep', 'spambl_l10n'));
 		$k = self::optmaxdata;
 		$group = self::opt_group;
 		$va = array(
@@ -2521,14 +2521,14 @@ class Spam_BLIP_class {
 
 	// callback, install section field: opt delete
 	public function put_del_opts($a) {
-		$tt = self::wt(__('Permanently delete settings (clean db)', 'spambl_l10n'));
+		$tt = self::wt(__('Permanently delete plugin settings', 'spambl_l10n'));
 		$k = self::optdelopts;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
 	// callback, install section field: data delete
 	public function put_del_stor($a) {
-		$tt = self::wt(__('Permanently delete stored data (drop table)', 'spambl_l10n'));
+		$tt = self::wt(__('Permanently delete database table (stored data)', 'spambl_l10n'));
 		$k = self::optdelstor;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
@@ -4071,7 +4071,7 @@ EOQ;
 		}
 		
 		$tf = self::best_time() - $tf;
-		self::dbglog('data store info gathered in ' . $tf . ' seconds');
+		self::dbglog('database info gathered in ' . $tf . ' seconds');
 		return $r;
 	}
 } // End class Spam_BLIP_class
