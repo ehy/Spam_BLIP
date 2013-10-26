@@ -378,7 +378,7 @@ class Spam_BLIP_class {
 				self::optbliplog => self::defbliplog,
 				self::optbailout => self::defbailout,
 				self::optdelopts => self::defdelopts,
-				self::optdelstor => self::defdelstor,
+				self::optdelstor => self::defdelstor
 			);
 		}
 		
@@ -406,7 +406,7 @@ class Spam_BLIP_class {
 			self::opteditbll => self::defeditbll,
 			self::opteditblr => self::defeditblr,
 			self::optdelopts => self::defdelopts,
-			self::optdelstor => self::defdelstor,
+			self::optdelstor => self::defdelstor
 		);
 	}
 	
@@ -1581,6 +1581,13 @@ class Spam_BLIP_class {
 					}
 					break;
 				// Checkboxes
+				case self::optrecdata:
+				case self::optusedata:
+					// these two are special: subject to
+					// static const
+					if ( self::userecdata_enable !== true ) {
+						$ot = 'true';
+					}
 				case self::optverbose:
 				case self::optcommflt:
 				case self::optpingflt:
@@ -1589,8 +1596,6 @@ class Spam_BLIP_class {
 				case self::optnonhrec:
 				case self::optchkexst:
 				case self::optrej_not:
-				case self::optrecdata:
-				case self::optusedata:
 				case self::optplugwdg:
 				case self::optipnglog:
 				case self::optbliplog:
@@ -2628,12 +2633,16 @@ class Spam_BLIP_class {
 
 	// for whether to store hit data
 	public static function get_recdata_option() {
-		return self::opt_by_name(self::optrecdata);
+		return self::userecdata_enable
+			? self::opt_by_name(self::optrecdata)
+			: 'true';
 	}
 
 	// for whether to use stored data
 	public static function get_usedata_option() {
-		return self::opt_by_name(self::optusedata);
+		return self::userecdata_enable
+			? self::opt_by_name(self::optusedata)
+			: 'true';
 	}
 
 	// ttl of stored data; seconds (time)
@@ -4216,9 +4225,10 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$bo  = $this->plinst->get_bailout_option();
 		$ce  = $this->plinst->get_chkexist_option();
 		$rn  = $this->plinst->get_rec_non_option();
+		$ps  = $this->plinst->get_rej_not_option();
 		$showopt = false;
 		if ( $bc != 'false' || $bp != 'false' || $br != 'false' ||
-			$tw != 'false' ||
+			$tw != 'false' || $ps != 'false' ||
 			$bo != 'false' || $ce != 'false' || $rn != 'false' ) {
 			$showopt = true;
 		}
@@ -4296,6 +4306,11 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			if ( $tw != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
 					$wt(__('Whitelisting TOR exits', 'spambl_l10n'))
+				);
+			}
+			if ( $ps != 'false' ) {
+				printf("\n\t\t<li>%s</li>",
+					$wt(__('Not rejecting hits', 'spambl_l10n'))
 				);
 			}
 			echo "\n\t</ul>\n";
