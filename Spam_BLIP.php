@@ -157,6 +157,8 @@ class Spam_BLIP_class {
 	const optnonhrec = 'nonhrec';
 	// check existing comments marked as spam?
 	const optchkexst = 'chkexst';
+	// do *not* reject comments?
+	const optrej_not = 'rej_not';
 	// keep rbl hit data?
 	const optrecdata = 'recdata';
 	// use rbl hit data?
@@ -211,6 +213,8 @@ class Spam_BLIP_class {
 	const defnonhrec = 'false';
 	// check existing comments marked as spam?
 	const defchkexst = 'true';
+	// do *not* reject comments?
+	const defrej_not = 'false';
 	/* opts keep/use rbl hit data will probably not be useful,
 	 * and will probably confuse: keep the code in place for now,
 	 * but disable the settings page display, keeping the defaults
@@ -366,6 +370,7 @@ class Spam_BLIP_class {
 				self::opttorpass => self::deftorpass,
 				self::optnonhrec => self::defnonhrec,
 				self::optchkexst => self::defchkexst,
+				self::optrej_not => self::defrej_not,
 				self::optrecdata => self::defrecdata,
 				self::optusedata => self::defusedata,
 				self::optplugwdg => self::defplugwdg,
@@ -385,6 +390,7 @@ class Spam_BLIP_class {
 			self::opttorpass => self::deftorpass,
 			self::optnonhrec => self::defnonhrec,
 			self::optchkexst => self::defchkexst,
+			self::optrej_not => self::defrej_not,
 			self::optrecdata => self::defrecdata,
 			self::optusedata => self::defusedata,
 			self::optttldata => self::defttldata,
@@ -484,6 +490,11 @@ class Spam_BLIP_class {
 				self::optchkexst,
 				$items[self::optchkexst],
 				array($this, 'put_chkexst_opt'));
+		$fields[$nf++] = new $Cf(self::optrej_not,
+				self::wt(__('Check but do <em>not</em> reject:', 'spambl_l10n')),
+				self::optrej_not,
+				$items[self::optrej_not],
+				array($this, 'put_rej_not_opt'));
 
 		// section object includes description callback
 		$sections[$ns++] = new $Cs($fields,
@@ -1577,6 +1588,7 @@ class Spam_BLIP_class {
 				case self::opttorpass:
 				case self::optnonhrec:
 				case self::optchkexst:
+				case self::optrej_not:
 				case self::optrecdata:
 				case self::optusedata:
 				case self::optplugwdg:
@@ -1741,8 +1753,16 @@ class Spam_BLIP_class {
 			see "Data records TTL" below),
 			the connection
 			is considered a spammer, and the address is added
-			to the hit database (if enabled).
+			to the hit database.
 			The default is true.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+
+		$t = self::wt(__('With "Check but do <em>not</em> reject"
+			enabled all checks are performed, but hits are not
+			rejected (if comments are already closed, that is not
+			changed). This allows useful records to be collected
+			while disabling the main functionality.
+			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		echo '</div>';
@@ -2186,6 +2206,13 @@ class Spam_BLIP_class {
 	public function put_chkexst_opt($a) {
 		$tt = self::wt(__('Check address in existing comments', 'spambl_l10n'));
 		$k = self::optchkexst;
+		$this->put_single_checkbox($a, $k, $tt);
+	}
+
+	// pass hits (do not reject)?
+	public function put_rej_not_opt($a) {
+		$tt = self::wt(__('Pass (do not reject) hits', 'spambl_l10n'));
+		$k = self::optrej_not;
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
@@ -2649,6 +2676,11 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::optchkexst);
 	}
 
+	// don't reject, but pass hits
+	public static function get_rej_not_option() {
+		return self::opt_by_name(self::optrej_not);
+	}
+
 	// get active RBL domains
 	public static function get_editrbl_option() {
 		return self::opt_by_name(self::opteditrbl);
@@ -2806,6 +2838,11 @@ class Spam_BLIP_class {
 		}
 		
 		if ( $prev !== false ) {
+			if ( self::get_rej_not_option() == 'true' ) {
+				self::errlog('Passing spam hit per no-reject option');
+				return;
+			}
+			
 			self::dbglog('BAILING FROM ' . __FUNCTION__);
 			// TRANSLATORS: polite rejection message
 			// in response to blacklisted IP address
@@ -2836,6 +2873,11 @@ class Spam_BLIP_class {
 		//}
 		
 		//if ( $prev !== false ) {
+			//if ( self::get_rej_not_option() == 'true' ) {
+				//self::errlog('Passing spam hit per no-reject option');
+				//return;
+			//}
+			
 			//self::dbglog('BAILING FROM ' . __FUNCTION__);
 			//// TRANSLATORS: polite rejection message
 			//// in response to blacklisted IP address
@@ -2851,6 +2893,10 @@ class Spam_BLIP_class {
 	// though there's not much point to it
 	public function action_comment_closed($comment_post_ID) {
 		if ( self::get_comments_open_option() != 'true' ) {
+			return;
+		}
+		
+		if ( self::get_rej_not_option() == 'true' ) {
 			return;
 		}
 		
@@ -2887,6 +2933,11 @@ class Spam_BLIP_class {
 		}
 		
 		if ( $prev !== false ) {
+			if ( self::get_rej_not_option() == 'true' ) {
+				self::errlog('Passing spam hit per no-reject option');
+				return;
+			}
+			
 			self::dbglog('BAILING FROM ' . __FUNCTION__);
 			// TRANSLATORS: polite rejection message
 			// in response to blacklisted IP address
@@ -2936,6 +2987,10 @@ class Spam_BLIP_class {
 		// those might have unpleasant results -- OTOH, the caller
 		// also conditionally uses the empty string, so it may
 		// be considered an appropriate return
+		if ( self::get_rej_not_option() == 'true' ) {
+			self::errlog('Passing spam hit per no-reject option');
+			return $link;
+		}		
 		$link = '';
 		return $link;
 	}
@@ -2971,6 +3026,10 @@ class Spam_BLIP_class {
 		}
 
 		// already got a hit on this IP addr		
+		if ( self::get_rej_not_option() == 'true' ) {
+			self::errlog('Passing spam hit per no-reject option');
+			return $open;
+		}		
 		return false;
 	}
 
@@ -2995,6 +3054,10 @@ class Spam_BLIP_class {
 		}
 
 		// already got a hit on this IP addr		
+		if ( self::get_rej_not_option() == 'true' ) {
+			self::errlog('Passing spam hit per no-reject option');
+			return $open;
+		}		
 		return false;
 	}
 
