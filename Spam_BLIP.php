@@ -211,6 +211,11 @@ class Spam_BLIP_class {
 	const defnonhrec = 'false';
 	// check existing comments marked as spam?
 	const defchkexst = 'true';
+	/* opts keep/use rbl hit data will probably not be useful,
+	 * and will probably confuse: keep the code in place for now,
+	 * but disable the settings page display, keeping the defaults
+	 */
+	const userecdata_enable = false;
 	// keep rbl hit data?
 	const defrecdata = 'true';
 	// use rbl hit data?
@@ -491,16 +496,22 @@ class Spam_BLIP_class {
 		// data section:
 		$nf = 0;
 		$fields = array();
-		$fields[$nf++] = new $Cf(self::optrecdata,
-				self::wt(__('Keep data:', 'spambl_l10n')),
-				self::optrecdata,
-				$items[self::optrecdata],
-				array($this, 'put_recdata_opt'));
-		$fields[$nf++] = new $Cf(self::optusedata,
-				self::wt(__('Use data:', 'spambl_l10n')),
-				self::optusedata,
-				$items[self::optusedata],
-				array($this, 'put_usedata_opt'));
+		/* opts keep/use rbl hit data will probably not be useful,
+		 * and will probably confuse: keep the code in place for now,
+		 * but disable the settings page display, keeping the defaults
+		 */
+		if ( self::userecdata_enable ) {
+			$fields[$nf++] = new $Cf(self::optrecdata,
+					self::wt(__('Keep data:', 'spambl_l10n')),
+					self::optrecdata,
+					$items[self::optrecdata],
+					array($this, 'put_recdata_opt'));
+			$fields[$nf++] = new $Cf(self::optusedata,
+					self::wt(__('Use data:', 'spambl_l10n')),
+					self::optusedata,
+					$items[self::optusedata],
+					array($this, 'put_usedata_opt'));
+		}
 		$fields[$nf++] = new $Cf(self::optttldata,
 				self::wt(__('Data records TTL:', 'spambl_l10n')),
 				self::optttldata,
@@ -1767,6 +1778,11 @@ class Spam_BLIP_class {
 		$t = self::wt(__('Introduction:', 'spambl_l10n'));
 		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
+		/* opts keep/use rbl hit data will probably not be useful,
+		 * and will probably confuse: keep the code in place for now,
+		 * but disable the settings page display, keeping the defaults
+		 */
+		if ( self::userecdata_enable ) {
 		$t = self::wt(__('These options enable, disable or configure
 			the storage of blacklist lookup results in the
 			<em>WordPress</em> database, or the use of the
@@ -1784,6 +1800,13 @@ class Spam_BLIP_class {
 			stored data; if a hit is found there then the
 			DNS lookup is not performed.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
+		} else { // if ( self::userecdata_enable )
+		$t = self::wt(__('These options configure
+			the storage of blacklist lookup results in a table
+			in the
+			<em>WordPress</em> database.', 'spambl_l10n'));
+		printf('<p>%s</p>%s', $t, "\n");
+		} // if ( self::userecdata_enable )
 
 		$t = self::wt(__('"Data records TTL" sets an expiration time for
 			records in the database. The records should not be kept

@@ -120,6 +120,17 @@ different.
 
 Okay. What is the 'BLIP' in "Spam BLIP"? Think 'BLacklist IP'.
 
+= Any more? Howzabout the boring version number? =
+
+Right you are. Version numbers are useful, but sometimes fail
+to enliven the imagination. So, as it happens, this plugin was
+submitted to WordPress.org one day after the release they
+call Basie, and in that spirit this release of this plugin
+will be named Benny, which you may take to refer to Benny Goodman,
+or "Who Put the Benzedrine in Mrs. Murphy's Ovaltine" or 'Benefits?
+You want benefits? Are you an enemy of the Plutocratic Revolution?'
+Choose any one, they all work.
+
 == Screenshots ==
 
 1. The Spam BLIP optional information widget display.
