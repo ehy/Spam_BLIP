@@ -3534,6 +3534,10 @@ class Spam_BLIP_class {
 	}
 
 	protected static function hit_optional_bailout($addr, $statype) {
+		if ( self::get_rej_not_option() == 'true' ) {
+			return;
+		}
+
 		if ( self::get_bailout_option() != 'false' ) {
 			// Allow additional action from elsewhere, however unlikely.
 			do_action('spamblip_hit_bailout', $addr, $statype);
