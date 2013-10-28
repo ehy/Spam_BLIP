@@ -129,7 +129,7 @@ endif;
 if ( ! class_exists('Spam_BLIP_class') ) :
 class Spam_BLIP_class {
 	// for debugging: set false for release
-	const DBG = false;
+	const DBG = true;
 	
 	// web page as of release
 	const plugin_webpage = 'http://agalena.nfshost.com/b1/?page_id=211';
@@ -2848,7 +2848,7 @@ class Spam_BLIP_class {
 		
 		if ( $prev !== false ) {
 			if ( self::get_rej_not_option() == 'true' ) {
-				self::errlog('Passing spam hit per no-reject option');
+				self::dbglog('no-reject option, in ' . __FUNCTION__);
 				return;
 			}
 			
@@ -2883,7 +2883,7 @@ class Spam_BLIP_class {
 		
 		//if ( $prev !== false ) {
 			//if ( self::get_rej_not_option() == 'true' ) {
-				//self::errlog('Passing spam hit per no-reject option');
+				//self::dbglog('no-reject option, in ' . __FUNCTION__);
 				//return;
 			//}
 			
@@ -2943,7 +2943,7 @@ class Spam_BLIP_class {
 		
 		if ( $prev !== false ) {
 			if ( self::get_rej_not_option() == 'true' ) {
-				self::errlog('Passing spam hit per no-reject option');
+				self::dbglog('no-reject option, in ' . __FUNCTION__);
 				return;
 			}
 			
@@ -2997,7 +2997,7 @@ class Spam_BLIP_class {
 		// also conditionally uses the empty string, so it may
 		// be considered an appropriate return
 		if ( self::get_rej_not_option() == 'true' ) {
-			self::errlog('Passing spam hit per no-reject option');
+			self::dbglog('no-reject option, in ' . __FUNCTION__);
 			return $link;
 		}		
 		$link = '';
@@ -3036,7 +3036,7 @@ class Spam_BLIP_class {
 
 		// already got a hit on this IP addr		
 		if ( self::get_rej_not_option() == 'true' ) {
-			self::errlog('Passing spam hit per no-reject option');
+			self::dbglog('no-reject option, in ' . __FUNCTION__);
 			return $open;
 		}		
 		return false;
@@ -3064,7 +3064,7 @@ class Spam_BLIP_class {
 
 		// already got a hit on this IP addr		
 		if ( self::get_rej_not_option() == 'true' ) {
-			self::errlog('Passing spam hit per no-reject option');
+			self::dbglog('no-reject option, in ' . __FUNCTION__);
 			return $open;
 		}		
 		return false;
