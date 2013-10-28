@@ -2014,7 +2014,7 @@ class Spam_BLIP_class {
 			consist of one or more fields separated by a \';\'
 			character, and each such field must have two parts
 			separated by a \',\' character. The first part of
-			each field is in index into the dotted quad form,
+			each field is an index into the dotted quad form,
 			starting at zero (0) and preceeding from left to
 			right. The second part of each field is a comparison
 			operator, which may be <em>one</em> of
