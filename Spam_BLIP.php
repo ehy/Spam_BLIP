@@ -816,7 +816,7 @@ class Spam_BLIP_class {
 	public function settings_js() {
 		$jsfn = self::settings_jsname;
 		$j = $this->settings_js;
-        wp_enqueue_script($jsfn, $j);
+		wp_enqueue_script($jsfn, $j);
 	}
 
 	// This function is placed here below the function that sets-up

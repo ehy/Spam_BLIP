@@ -84,11 +84,8 @@ not yet falling over yourself to get it installed:
 	whether or not it is known that the address is spamming. If you
 	enable this option (you should), it might let some spam get
 	through. In this case, mark the comment as spam, and use the
-	Spam BLIP option to check existing comments marked as spam
-	(but this has the disadvantage of not being subject to the
-	record TTL, and the address will continually rejected until
-	the comment deleted, or the option is disabled); or use
-	Spam BLIP in concert with another sort of spam filter, such
+	Spam BLIP option to check existing comments marked as spam; or
+	use Spam BLIP in concert with another sort of spam filter, such
 	as one that analyzes comment content. (Please report any
 	conflict with other, non-DNS blacklist type spam plugins.
 	Note that Spam BLIP is not expected to work in concert with
