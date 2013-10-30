@@ -1846,8 +1846,8 @@ class Spam_BLIP_class {
 			in seconds, where zero (0) or less will disable the
 			TTL.
 			When an address is being checked, the database lookup
-			requests only records that have with a last-seen time
-			within the TTL; also, when database maintenance is
+			requests only records that have last been seen
+			within the TTL time; also, when database maintenance is
 			performed, expired records are removed.', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
@@ -1900,13 +1900,16 @@ class Spam_BLIP_class {
 		$t = self::wt(__('Introduction:', 'spambl_l10n'));
 		printf('<p><strong>%s</strong>%s</p>', $t, "\n");
 
-		$t = self::wt(__('The "Use the included widget" option enables
+		$t = self::wt(__('The "Use the included widget" option controls
 			whether the multi-widget included with the plugin is
 			enabled. The widget will display some counts of the
-			stored data, if the store is enabled. You should consider
+			stored data, and plugin settings. You should consider
 			whether you want that data on public display, but
 			if you find that acceptable, the widget should give
 			a convenient view of the effectiveness of the plugin.
+			Of course, the widget must have been set up for use
+			(under the Appearance menu, Widgets item) for this
+			setting to have an effect.
 			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
@@ -1915,9 +1918,7 @@ class Spam_BLIP_class {
 			the remote IP address provided in the CGI/1.1
 			environment variable "REMOTE_ADDR" is wrong. Software
 			used in a hosting arrangement can cause this, even
-			while the connection ultimately works. (Although
-			this condition is, hopefully, rare, this option was
-			added because the author has encountered it.) This
+			while the connection ultimately works. This
 			plugin checks whether the connecting address is in
 			a reserved, loopback, or other special purpose
 			network range. If it is, the DNS blacklist check
@@ -1951,8 +1952,8 @@ class Spam_BLIP_class {
 			when the connecting IP address is blacklisted. The
 			default is to only disable comments, and allow the
 			page to be produced normally. This option will save
-			some amount of network load (and use that you might
-			pay for), and spammers do not want or need your
+			some amount of network load,
+			and spammers do not want or need your
 			content anyway, but if there is a rare false positive,
 			the visitor, also a spam victim in this case, will
 			miss your content.

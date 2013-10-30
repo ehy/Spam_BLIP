@@ -184,6 +184,27 @@ class ChkBL_0_0_1 {
 		return self::$strictdom;
 	}
 	
+	// get copy of this class' static 'other' default array
+	public static function get_other_array() {
+		return self::$otherdom;
+	}
+	
+	// get copy of all DNSBL dommains, in array(default, strict, other)
+	// unless merge === true
+	public static function get_all_domain_array($merge = false) {
+		return $merge ?
+			array_merge(
+			self::$defdom,
+			self::$strictdom,
+			self::$otherdom)
+			:
+			array(
+			self::$defdom,
+			self::$strictdom,
+			self::$otherdom)
+			;
+	}
+	
 	// get array built in contructor
 	public function get_dom_array() {
 		return $this->doms;
@@ -657,8 +678,9 @@ class IPReservedCheck_0_0_1 {
 }
 endif; // class_exists('IPReservedCheck_0_0_1')
 
-if ( false && php_sapi_name() === 'cli' ) {
-	$t = new ChkBL_0_0_1();
+if ( php_sapi_name() === 'cli' ) {
+	$doms = ChkBL_0_0_1::get_all_domain_array(true);
+	$t = new ChkBL_0_0_1($doms, false);
 	$doms = $t->get_dom_array();
 	$ipchk = new IPReservedCheck_0_0_1();
 
