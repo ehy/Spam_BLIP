@@ -3,7 +3,7 @@
 Plugin Name: Spam BLIP
 Plugin URI: http://agalena.nfshost.com/b1/?page_id=<CHANGE_ME>
 Description: Stop comment spam before it is posted.
-Version: 1.0.0
+Version: 1.0.1
 Author: Ed Hynan
 Author URI: http://agalena.nfshost.com/b1/
 License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
