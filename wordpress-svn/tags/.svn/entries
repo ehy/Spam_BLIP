@@ -1,7 +1,7 @@
 10
 
 dir
-795544
+795555
 http://plugins.svn.wordpress.org/spam-blip/tags
 http://plugins.svn.wordpress.org
 
@@ -25,4 +25,27 @@ plugin-master
 
 
 b8457f37-d9ea-0310-8a92-e5e31aec5664
+
+1.0.0
+dir
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+http://plugins.svn.wordpress.org/spam-blip/trunk
+795555
 

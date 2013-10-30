@@ -1,43 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 32
-/!svn/ver/795538/spam-blip/trunk
-END
-Options_0_0_2b.inc.php
-K 25
-svn:wc:ra_dav:version-url
-V 55
-/!svn/ver/795546/spam-blip/trunk/Options_0_0_2b.inc.php
-END
-readme.txt
-K 25
-svn:wc:ra_dav:version-url
-V 43
-/!svn/ver/795546/spam-blip/trunk/readme.txt
-END
-Spam_BLIP.php
-K 25
-svn:wc:ra_dav:version-url
-V 46
-/!svn/ver/795546/spam-blip/trunk/Spam_BLIP.php
-END
-Makefile
-K 25
-svn:wc:ra_dav:version-url
-V 41
-/!svn/ver/795546/spam-blip/trunk/Makefile
-END
-index.php
-K 25
-svn:wc:ra_dav:version-url
-V 42
-/!svn/ver/795546/spam-blip/trunk/index.php
-END
-OptPage_0_0_2b.inc.php
-K 25
-svn:wc:ra_dav:version-url
-V 55
-/!svn/ver/795546/spam-blip/trunk/OptPage_0_0_2b.inc.php
+/!svn/ver/795546/spam-blip/trunk
 END
 ChkBL_0_0_1.inc.php
 K 25
@@ -56,4 +20,40 @@ K 25
 svn:wc:ra_dav:version-url
 V 58
 /!svn/ver/795546/spam-blip/trunk/OptSection_0_0_2b.inc.php
+END
+Options_0_0_2b.inc.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/!svn/ver/795546/spam-blip/trunk/Options_0_0_2b.inc.php
+END
+readme.txt
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/!svn/ver/795546/spam-blip/trunk/readme.txt
+END
+Spam_BLIP.php
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/!svn/ver/795556/spam-blip/trunk/Spam_BLIP.php
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/!svn/ver/795546/spam-blip/trunk/Makefile
+END
+index.php
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/!svn/ver/795546/spam-blip/trunk/index.php
+END
+OptPage_0_0_2b.inc.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/!svn/ver/795546/spam-blip/trunk/OptPage_0_0_2b.inc.php
 END

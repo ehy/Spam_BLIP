@@ -1,7 +1,7 @@
 10
 
 dir
-795546
+795555
 http://plugins.svn.wordpress.org/spam-blip/trunk/locale
 http://plugins.svn.wordpress.org
 
@@ -25,74 +25,6 @@ EdHynan
 
 
 b8457f37-d9ea-0310-8a92-e5e31aec5664
-
-spambl_l10n-en_US.mo
-file
-
-
-
-
-2013-10-30T00:16:23.000000Z
-03c243c67b21df6c0c3a557f257f612f
-2013-10-30T00:23:49.572413Z
-795546
-EdHynan
-has-props
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-38950
-
-spambl_l10n.pot
-file
-
-
-
-
-2013-10-30T00:16:22.000000Z
-1cb60074a9b2994141da023e201377ec
-2013-10-30T00:23:49.572413Z
-795546
-EdHynan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-31660
 
 spambl_l10n-en_US.po
 file
@@ -161,4 +93,72 @@ has-props
 
 
 3074
+
+spambl_l10n-en_US.mo
+file
+
+
+
+
+2013-10-30T00:16:23.000000Z
+03c243c67b21df6c0c3a557f257f612f
+2013-10-30T00:23:49.572413Z
+795546
+EdHynan
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+38950
+
+spambl_l10n.pot
+file
+
+
+
+
+2013-10-30T00:16:22.000000Z
+1cb60074a9b2994141da023e201377ec
+2013-10-30T00:23:49.572413Z
+795546
+EdHynan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+31660
 
