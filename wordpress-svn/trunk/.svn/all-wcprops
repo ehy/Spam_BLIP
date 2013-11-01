@@ -1,7 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 32
-/!svn/ver/795556/spam-blip/trunk
+/!svn/ver/796947/spam-blip/trunk
 END
 OptField_0_0_2b.inc.php
 K 25
@@ -25,13 +25,13 @@ readme.txt
 K 25
 svn:wc:ra_dav:version-url
 V 43
-/!svn/ver/795546/spam-blip/trunk/readme.txt
+/!svn/ver/796948/spam-blip/trunk/readme.txt
 END
 Spam_BLIP.php
 K 25
 svn:wc:ra_dav:version-url
 V 46
-/!svn/ver/796943/spam-blip/trunk/Spam_BLIP.php
+/!svn/ver/796948/spam-blip/trunk/Spam_BLIP.php
 END
 Makefile
 K 25
