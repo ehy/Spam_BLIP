@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Spam BLIP
-Plugin URI: http://agalena.nfshost.com/b1/?page_id=<CHANGE_ME>
+Plugin URI: http://agalena.nfshost.com/b1/?page_id=211
 Description: Stop comment spam before it is posted.
 Version: 1.0.1
 Author: Ed Hynan
