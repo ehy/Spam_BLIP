@@ -950,14 +950,14 @@ class Spam_BLIP_class {
 		self::load_translations();
 		$this->init_opts();
 
-		$pf = self::mk_pluginfile();
 		// admin or public invocation?
 		$adm = is_admin();
 
-		$cl = __CLASS__; // for static methods
+		$cl = __CLASS__; // for static methods callbacks
 
 		if ( $adm ) {
 			// keep it clean: {de,}activation
+			$pf = self::mk_pluginfile();
 			if ( current_user_can('activate_plugins') ) {
 				$aa = array($cl, 'on_deactivate');
 				register_deactivation_hook($pf, $aa);
@@ -977,14 +977,13 @@ class Spam_BLIP_class {
 				$this->init_settings_page();
 			}
 	
-			// this will create/update table as nec. if user set
-			// the option (which defaults to false)
+			// create/update table as nec.
 			if ( self::get_recdata_option() != 'false' ||
 				 self::get_usedata_option() != 'false' ) {
 				$this->db_create_table();
 	
 				// not sufficiently certain about this; we
-				// do our own maintenance anyway
+				// do our own table maintenance anyway
 				if ( false && defined('WP_ALLOW_REPAIR') ) {
 					$aa = array($this, 'filter_tables_to_repair');
 					add_filter('tables_to_repair', $aa, 100);
@@ -997,19 +996,19 @@ class Spam_BLIP_class {
 			$aa = array($this, 'action_comment_closed');
 			add_action('comment_closed', $aa, 100);
 	
-			// must check more than just our option for this
+			$aa = array($this, 'filter_comments_open');
+			add_filter('comments_open', $aa, 100);
+	
+			$aa = array($this, 'filter_pings_open');
+			add_filter('pings_open', $aa, 100);
+	
+			// optional check on new registrations
 			if ( self::check_filter_user_regi() ) {
 				$aa = array($this, 'filter_user_regi');
 				add_filter('register', $aa, 100);
 				$aa = array($this, 'action_user_regi');
 				add_action('login_form_register', $aa, 100);
 			}
-	
-			$aa = array($this, 'filter_comments_open');
-			add_filter('comments_open', $aa, 100);
-	
-			$aa = array($this, 'filter_pings_open');
-			add_filter('pings_open', $aa, 100);
 		} // if ( $adm )
 
 		// WP does this hook from a php register_shutdown_function()
@@ -1020,9 +1019,6 @@ class Spam_BLIP_class {
 		// setup cron job for e.g, db table maintenance
 		if ( ! wp_next_scheduled('spamblipplugincronact',
 			self::$wp_cron_arg) ) {
-			// set *previous* midnight, *local* time -- there is
-			// something very fragile about the wp cron facility:
-			// tough to get it to actually work
 			$tm = time();
 			wp_schedule_event(
 				$tm, self::maint_intvl, 'spamblipplugincronact',
