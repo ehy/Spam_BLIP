@@ -145,6 +145,8 @@ class Spam_BLIP_class {
 	// WP option names/keys
 	// verbose (helpful?) section introductions?
 	const optverbose = 'verbose';
+	// this is hidden in settings page; used w/ JS for 'screen options'
+	const optscreen1 = 'screen_opts_1';
 	// filter comments_open?
 	const optcommflt = 'commflt';
 	// filter pings_open?
@@ -201,6 +203,8 @@ class Spam_BLIP_class {
 
 	// verbose (helpful?) section introductions?
 	const defverbose = 'true';
+	// this is hidden in settings page; used w/ JS for 'screen options'
+	const defscreen1 = 'true';
 	// filter comments_open?
 	const defcommflt = 'true';
 	// filter pingss_open?
@@ -364,6 +368,7 @@ class Spam_BLIP_class {
 		if ( $chkonly === true ) {
 			return array(
 				self::optverbose => self::defverbose,
+				self::optscreen1 => self::defscreen1,
 				self::optcommflt => self::defcommflt,
 				self::optpingflt => self::defpingflt,
 				self::optregiflt => self::defregiflt,
@@ -384,6 +389,7 @@ class Spam_BLIP_class {
 		
 		return array(
 			self::optverbose => self::defverbose,
+			self::optscreen1 => self::defscreen1,
 			self::optcommflt => self::defcommflt,
 			self::optpingflt => self::defpingflt,
 			self::optregiflt => self::defregiflt,
@@ -769,8 +775,10 @@ class Spam_BLIP_class {
 		// from default textdomain (WP core)
 		$tt = self::wt(sprintf(
 			__('<p><strong>%s</strong></p><p>
-			Tips and explanations can be found on the
+			More information can be found on the
 			<a href="%s" target="_blank">web page</a>.
+			Please submit feedback or questions as comments
+			on that page.
 			</p>', 'spambl_l10n'),
 			__('For more information:'),
 			self::plugin_webpage
@@ -1581,6 +1589,10 @@ class Spam_BLIP_class {
 					if ( self::userecdata_enable !== true ) {
 						$ot = 'true';
 					}
+				// hidden opts for 'screen options' -- boolean
+				case self::optscreen1:
+					$a_out[$k] = ($ot == 'false') ? 'false' : 'true';
+					break;
 				case self::optverbose:
 				case self::optcommflt:
 				case self::optpingflt:
@@ -1682,6 +1694,14 @@ class Spam_BLIP_class {
 		if ( self::get_verbose_option() !== 'true' ) {
 			return;
 		}
+
+		// coopt this proc to put 'screen options' hidden opt:
+		$eid = self::optscreen1 . '_ini';
+		$val = self::get_screen1_option() == 'true' ? "true" : "false";
+
+		printf('<input id="%s" value="%s" type="hidden">%s',
+			$eid, $val, "\n"
+		);
 
 		$did = 'Spam_BLIP_General_Desc';
 		echo '<div id="' . $did . '">';
@@ -2164,6 +2184,16 @@ class Spam_BLIP_class {
 		$tt = self::wt(__('Show verbose introductions', 'spambl_l10n'));
 		$k = self::optverbose;
 		$this->put_single_checkbox($a, $k, $tt);
+
+		// coopt this proc to put 'screen options' hidden opt:
+		$group = self::opt_group;
+		$eid = self::optscreen1;
+		$enm = "{$group}[{$eid}]";
+		$val = self::get_screen1_option() == 'true' ? "true" : "false";
+
+		printf('<input id="%s" name="%s" value="%s" type="hidden">%s',
+			$eid, $enm, $val, "\n"
+		);
 	}
 
 	// callback, rbl filter comments?
@@ -2627,6 +2657,11 @@ class Spam_BLIP_class {
 	// for settings section introductions
 	public static function get_verbose_option() {
 		return self::opt_by_name(self::optverbose);
+	}
+
+	// for settings section 'screen options'; hidden input value
+	public static function get_screen1_option() {
+		return self::opt_by_name(self::optscreen1);
 	}
 
 	// for whether to use widget
