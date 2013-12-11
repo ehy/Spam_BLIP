@@ -140,6 +140,8 @@ Choose any one, they all work.
 
 = 1.0.1 =
 * Small code cleanups.
+* Made the "Screen Options" tab -> "Section Introductions" checkbox
+	value persistent, if the "Save Settings" button is clicked.
 * Style tweaks and size tweaks (admin) in response to WP 3.8 changes.
 * Checked with WP 3.8: OK.
 
