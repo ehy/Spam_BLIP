@@ -2388,12 +2388,20 @@ class Spam_BLIP_class {
 		// sigh. ffox is so generous that its textareas are
 		// much larger than others for the same dimension args
 		$mozz = self::is_mozz();
+		// Update: with WP 3.8 RC2 style is changed significantly, and
+		// now text sizes are larger and textareas that were too small
+		// in some (webkit?) browsers are now too large! Yet, FFox
+		// remains about the same.
+		// So, another boolean for that.
+		$wp38 = self::wpv_min((3 << 24) | (8 << 16));
 
 		// atts for textarea
-		$txh = $mozz ? 12 : 12;
-		$txw = $mozz ? 54 : 74;
-		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
-		$txatt .= ' inputmode="verbatim" wrap="off"';
+		$txh = $mozz ? 12 : ($wp38 ? 12 : 12);
+		$txw = $mozz ? 54 : ($wp38 ? 52 : 74);
+		$txatt = sprintf('rows="%u" cols="%u"%s %s', $txh, $txw,
+			$wp38 ? ' style="font-size: 85%;"' : "",
+			'inputmode="verbatim" wrap="off"'
+		);
 	
 		$aargs = array(
 			// textarea element attributes; esp., name
@@ -2452,13 +2460,21 @@ class Spam_BLIP_class {
 		// sigh. ffox is so generous that its textareas are
 		// much larger than others for the same dimension args
 		$mozz = self::is_mozz();
+		// Update: with WP 3.8 RC2 style is changed significantly, and
+		// now text sizes are larger and textareas that were too small
+		// in some (webkit?) browsers are now too large! Yet, FFox
+		// remains about the same.
+		// So, another boolean for that.
+		$wp38 = self::wpv_min((3 << 24) | (8 << 16));
 
 		// atts for textarea
-		$txh = $mozz ? 12 : 12;
-		$txw = $mozz ? 54 : 74;
-		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
-		$txatt .= ' inputmode="verbatim" wrap="off"';
-	
+		$txh = $mozz ? 12 : ($wp38 ? 12 : 12);
+		$txw = $mozz ? 54 : ($wp38 ? 52 : 74);
+		$txatt = sprintf('rows="%u" cols="%u"%s %s', $txh, $txw,
+			$wp38 ? ' style="font-size: 85%;"' : "",
+			'inputmode="verbatim" wrap="off"'
+		);
+
 		$aargs = array(
 			// textarea element attributes; esp., name
 			'txattl' => $txatt . ' placeholder="127.0.0.2" name="' . "{$gr}[{$ol}]" . '"',
@@ -2525,13 +2541,21 @@ class Spam_BLIP_class {
 		// sigh. ffox is so generous that its textareas are
 		// much larger than others for the same dimension args
 		$mozz = self::is_mozz();
+		// Update: with WP 3.8 RC2 style is changed significantly, and
+		// now text sizes are larger and textareas that were too small
+		// in some (webkit?) browsers are now too large! Yet, FFox
+		// remains about the same.
+		// So, another boolean for that.
+		$wp38 = self::wpv_min((3 << 24) | (8 << 16));
 
 		// atts for textarea
-		$txh = $mozz ? 7 : 7;
-		$txw = $mozz ? 54 : 74;
-		$txatt = sprintf('rows="%u" cols="%u"', $txh, $txw);
-		$txatt .= ' inputmode="verbatim" wrap="off"';
-	
+		$txh = $mozz ? 7 : ($wp38 ? 9 : 7);
+		$txw = $mozz ? 54 : ($wp38 ? 52 : 74);
+		$txatt = sprintf('rows="%u" cols="%u"%s %s', $txh, $txw,
+			$wp38 ? ' style="font-size: 85%;"' : "",
+			'inputmode="verbatim" wrap="off"'
+		);
+
 		$aargs = array(
 			// textarea element attributes; esp., name
 			'txattl' => $txatt . ' placeholder="wanted.bl.example.net@127.0.0.2@0,=" name="' . "{$gr}[{$ol}]" . '"',
