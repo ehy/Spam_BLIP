@@ -1181,9 +1181,6 @@ class Spam_BLIP_class {
 	
 	// 'html-ize' a text string
 	public static function ht($text, $cset = null) {
-		// try to use get_option('blog_charset') only once;
-		// it's not cheap enough even with WP's cache for
-		// the number of times this might be called
 		static $_blog_charset;
 		if ( ! isset($_blog_charset) ) {
 			$_blog_charset = get_option('blog_charset');
@@ -2137,18 +2134,18 @@ class Spam_BLIP_class {
 			</tr>
 			<tr>
 				<td align="right">
-					<textarea id="<?php echo $ltxid; ?>" <?php echo $txattl; ?> ><?php echo $txvall; ?></textarea>
+					<textarea id="<?php echo $ltxid; ?>" class="mceEditor" <?php echo $txattl; ?> ><?php echo $txvall; ?></textarea>
 				</td>
 				<td align="left">
-					<textarea id="<?php echo $rtxid; ?>" <?php echo $txattr; ?> ><?php echo $txvalr; ?></textarea>
+					<textarea id="<?php echo $rtxid; ?>" class="mceEditor" <?php echo $txattr; ?> ><?php echo $txvalr; ?></textarea>
 				</td>
 			</tr>
 			<tr>
 				<td align="right">
-					<input type="button" id="<?php echo $lbtid; ?>" value="<?php echo $lbttx; ?>" onclick="false;" />
+					<input type="button" class="button" id="<?php echo $lbtid; ?>" value="<?php echo $lbttx; ?>" onclick="false;" />
 				</td>
 				<td align="left">
-					<input type="button" id="<?php echo $rbtid; ?>" value="<?php echo $rbttx; ?>" onclick="false;" />
+					<input type="button" class="button" id="<?php echo $rbtid; ?>" value="<?php echo $rbttx; ?>" onclick="false;" />
 				</td>
 			</tr>
 		</tbody></table>

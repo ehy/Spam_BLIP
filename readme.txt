@@ -140,6 +140,8 @@ Choose any one, they all work.
 
 = 1.0.1 =
 * Small code cleanups.
+* Added class attribute to buttons for style consistency.
+* Checked with WP 3.8: OK.
 
 = 1.0.0.2 =
 * No real change: just a correction of an error in the
