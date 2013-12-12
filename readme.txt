@@ -138,6 +138,8 @@ Choose any one, they all work.
 
 == Changelog ==
 
+= 1.0.2 =
+
 = 1.0.1 =
 * Small code cleanups.
 * Made the "Screen Options" tab -> "Section Introductions" checkbox

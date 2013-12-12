@@ -3,7 +3,7 @@
 Plugin Name: Spam BLIP
 Plugin URI: http://agalena.nfshost.com/b1/?page_id=211
 Description: Stop comment spam before it is posted.
-Version: 1.0.1
+Version: 1.0.2
 Author: Ed Hynan
 Author URI: http://agalena.nfshost.com/b1/
 License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
@@ -345,9 +345,7 @@ class Spam_BLIP_class {
 				array($cl, 'plugin_page_addlink'));
 		}
 
-		// some things are to be done in init hook: add
-		// hooks for shortcode and widget, and optionally
-		// posts processing to scan attachments, etc...
+		// some things are to be done in init hook
 		add_action('init', array($this, 'init_hook_func'));
 
 		// it's not enough to add this action in the activation hook;
