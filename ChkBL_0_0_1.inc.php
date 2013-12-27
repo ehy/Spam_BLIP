@@ -69,7 +69,13 @@ class ChkBL_0_0_1 {
 		// free of charge, currently without limit and I intend
 		// to keep it that way.''
 		// http://www.usenix.org.uk/content/rbl.html
-		array('all.s5h.net', '127.0.0.1', null)
+		array('all.s5h.net', '127.0.0.1', null),
+		// has been tried, but at end of list, therefore not
+		// really evaluated -- but, has given hits
+		// http://bbq.uso800.net/code.html
+		// Update 2013/12/27: has had enough testing that I think
+		// it should be in the default array
+		array('niku.2ch.net', '127.0.0.2', null)
 	);
 
 	// as above, but found to be very 'strict', i.e.,
@@ -87,7 +93,7 @@ class ChkBL_0_0_1 {
 		// weblog plugin (for which this is written)
 		// only 127.0.0.2 known
 		// http://www.apews.org/
-		array('l2.apews.org', '127.0.0.2', null),
+		//array('l2.apews.org', '127.0.0.2', null),
 		// dnsbl.tornevall.org in strict array due to its use
 		// blocking TOR, which is generally not wanted
 		// dnsbl.tornevall.org returns bit pattern in least-sig octet,
@@ -110,7 +116,9 @@ class ChkBL_0_0_1 {
 		// has been tried, but at end of list, therefore not
 		// really evaluated -- but, has given hits
 		// http://bbq.uso800.net/code.html
-		array('niku.2ch.net', '127.0.0.2', null)
+		// Update 2013/12/27: has had enough testing that I think
+		// it should be in the default array
+		//array('niku.2ch.net', '127.0.0.2', null)
 	);
 
 	protected $doms;      // from ctor arg, or ref to $defdom, or merge
