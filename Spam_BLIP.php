@@ -1415,15 +1415,17 @@ class Spam_BLIP_class {
 					break;
 				case self::optttldata:
 					switch ( $ot ) {
-						case ''.(3600):       //'One (1) hour'
-						case ''.(3600*6):     //'Six (6) hours'
-						case ''.(3600*12):    //'Twelve (12) hours'
-						case ''.(3600*24):    //'One (1) day'
-						case ''.(3600*24*7):  //'One (1) week'
+						case ''.(3600):       	//'One hour'
+						case ''.(3600*6):     	//'Six hours'
+						case ''.(3600*12):    	//'Twelve hours'
+						case ''.(3600*24):    	//'One day'
+						case ''.(3600*24*7):  	//'One week'
+						case ''.(3600*24*7*2):	//'Two weeks'
+						case ''.(3600*24*7*4):	//'Four weeks'
 							$a_out[$k] = $ot;
 							$nupd += ($ot === $oo) ? 0 : 1;
 							break;
-						default:               //'Set a value:'
+						default:               	//'Set a value:'
 							$ot = trim($opts[self::optttldata.'_text']);
 							// 9 decimal digits > 30 years in secs
 							$re = '/^[+-]?[0-9]{1,9}$/';
@@ -1797,8 +1799,8 @@ class Spam_BLIP_class {
 		$cnt = $this->db_get_rowcount();
 		if ( $cnt ) {
 			$t = self::wt(
-				_n('(There is %u record in the database)',
-				   '(There are %u records in the database)',
+				_n('(There is %u record in the database table)',
+				   '(There are %u records in the database table)',
 				   $cnt, 'spambl_l10n')
 			);
 			printf('<p>%s</p>%s', sprintf($t, $cnt), "\n");
@@ -1866,9 +1868,11 @@ class Spam_BLIP_class {
 			many records will be kept in the database. It is likely that
 			as the data grow larger, the oldest records will no
 			longer be needed. Records are judged old based on
-			the time last seen. Use your judgement with this:
-			if you always get large amounts of spam, a larger
-			value might be warranted.', 'spambl_l10n'));
+			the time an address was last seen. Use your judgement with
+			this: if you always get large amounts of spam, a larger
+			value might be warranted. The number of records may grow
+			larger than this setting by a small calculated amount before
+			being trimmed back to the number set here', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		$t = self::wt(__('The "Store (and use) non-hit addresses"
@@ -2263,22 +2267,26 @@ class Spam_BLIP_class {
 		$k = self::optttldata;
 		$group = self::opt_group;
 		$va = array(
-			array(__('One (1) hour, %s seconds', 'spambl_l10n'),
+			array(__('One hour, %s seconds', 'spambl_l10n'),
 				''.(3600)),
-			array(__('Six (6) hours, %s seconds', 'spambl_l10n'),
+			array(__('Six hours, %s seconds', 'spambl_l10n'),
 				''.(3600*6)),
-			array(__('Twelve (12) hours, %s seconds', 'spambl_l10n'),
+			array(__('Twelve hours, %s seconds', 'spambl_l10n'),
 				''.(3600*12)),
-			array(__('One (1) day, %s seconds', 'spambl_l10n'),
+			array(__('One day, %s seconds', 'spambl_l10n'),
 				''.(3600*24)),
-			array(__('One (1) week, %s seconds', 'spambl_l10n'),
+			array(__('One week, %s seconds', 'spambl_l10n'),
 				''.(3600*24*7)),
+			array(__('Two weeks, %s seconds', 'spambl_l10n'),
+				''.(3600*24*7*2)),
+			array(__('Four weeks, %s seconds', 'spambl_l10n'),
+				''.(3600*24*7*4)),
 			array(__('Set a value in seconds:', 'spambl_l10n'), ''.(0))
 		);
 
 		$v = trim('' . $a[$k]);
 		$bhit = false;
-		$txtval = ''.(3600*24);
+		$txtval = ''.(3600*24*7*2);
 
 		foreach ( $va as $oa ) {
 			$txt = self::wt($oa[0]);
