@@ -139,6 +139,9 @@ Choose any one, they all work.
 == Changelog ==
 
 = 1.0.2 =
+* Small code cleanups.
+* Tweek database table options: Intro text re. max records clarified;
+	TTL option radios added for two and four weeks.
 
 = 1.0.1 =
 * Small code cleanups.
