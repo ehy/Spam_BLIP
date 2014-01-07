@@ -140,8 +140,10 @@ Choose any one, they all work.
 
 = 1.0.2 =
 * Small code cleanups.
-* Tweek database table options: Intro text re. max records clarified;
-	TTL option radios added for two and four weeks.
+* Tweak database table options: Intro text re. max records clarified;
+	TTL option radios added for two and four weeks, max data records
+	option radio added for 200 records, defaults increased to
+	two weeks and 200 records respectively.
 
 = 1.0.1 =
 * Small code cleanups.

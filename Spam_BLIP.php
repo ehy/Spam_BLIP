@@ -229,9 +229,9 @@ class Spam_BLIP_class {
 	// use rbl hit data?
 	const defusedata = 'true';
 	// rbl hit data ttl
-	const defttldata = '86400'; // 1 day, seconds
+	const defttldata = '1209600'; // 2 weeks in seconds
 	// rbl maximum data records
-	const defmaxdata = '50';
+	const defmaxdata = '200';
 	// optplugwdg -- use plugin's widget
 	const defplugwdg = 'false';  // plugin widget
 	// log (and possibly mail notice) resv. IPs in REMOTE_ADDR?
@@ -1453,6 +1453,7 @@ class Spam_BLIP_class {
 						case '10':
 						case '50':
 						case '100':
+						case '200':
 						case '500':
 						case '1000':
 							$a_out[$k] = $ot;
@@ -2333,6 +2334,7 @@ class Spam_BLIP_class {
 			array(__('Ten (10)', 'spambl_l10n'), '10'),
 			array(__('Fifty (50)', 'spambl_l10n'), '50'),
 			array(__('One hundred (100)', 'spambl_l10n'), '100'),
+			array(__('Two hundred (200)', 'spambl_l10n'), '200'),
 			array(__('Five hundred (500)', 'spambl_l10n'), '500'),
 			array(__('One thousand (1000)', 'spambl_l10n'), '1000'),
 			array(__('Set a value:', 'spambl_l10n'), '0')
@@ -2340,7 +2342,7 @@ class Spam_BLIP_class {
 
 		$v = trim('' . $a[$k]);
 		$bhit = false;
-		$txtval = '50';
+		$txtval = '150';
 
 		foreach ( $va as $oa ) {
 			$txt = self::wt($oa[0]);
