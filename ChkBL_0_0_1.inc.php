@@ -22,7 +22,7 @@
 
 /*
 * Description: class used for DNSBL (RBL) check
-* Version: 0.0.2
+* Version: 0.0.1
 * Author: Ed Hynan
 * License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
 */
