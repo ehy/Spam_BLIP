@@ -121,9 +121,9 @@ class NetMisc_0_0_1 {
 		if ( ! is_array($np) || count($np) < 1 ) {
 			return false;
 		}
-		$a = $np[0];
-		$m = (count($np) < 2) ? '32' : $np[1];
-		$mc = (count($np) > 2) ? $np[2] : false;
+		$a = trim($np[0]);
+		$m = (count($np) < 2) ? '32' : trim($np[1]);
+		$mc = (count($np) > 2) ? trim($np[2]) : false;
 	
 		$o = array();
 		if ( self::netmask_norm($m, $o) !== true ) {
