@@ -45,7 +45,6 @@ class NetMisc_0_0_1 {
 		return self::$evh_opt_id;
 	}
 
-	
 	// test stubs to support what follows
 	public static function is_IP4_addr($addr)
 	{
@@ -151,7 +150,11 @@ class NetMisc_0_0_1 {
 	// may be an integer (CIDR) or dotted quad
 	public static function is_addr_in_net($addr, $net, $mask)
 	{
-		if ( ($a = ip2long($addr)) === false ) {
+		// use self::ip4_dots2int() for the address argument
+		// because it's more strict than PHP ip2long()
+		// is documented to *maybe* be (unverified), but
+		// use ip2long() for the others for (assumed) efficiency
+		if ( ($a = self::ip4_dots2int($addr)) === false ) {
 			return false;
 		}
 		if ( ($n = ip2long($net)) === false ) {
@@ -168,12 +171,167 @@ class NetMisc_0_0_1 {
 		return (($a & $m) === ($n & $m));
 	}
 	
+	// check IP4 address arg for sanity
+	public static function is_addr_OK($addr) {
+		return (self::ip4_dots2int($addr) !== false);
+	}
+
+	// Unlike PHP ip2long(), this does
+	// not possibly return non-false on incomplete addresses.
+	public static function ip4_dots2int($addr)
+	{
+		if ( ! preg_match('/^[0-9]{1,3}(\.[0-9]{1,3}){3}$/', $addr) ) {
+			return false;
+		}
+		$a = explode('.', $addr);
+		if ( count($a) !== 4 ) {
+			return false;
+		}
+	
+		$v = 0;
+		for ( $i = 0; $i < 4; $i++ ) {
+			$oct = (int)$a[$i];
+			if ( $oct > 255 ) {
+				// check for $oct < 0 done w/ preg_match()
+				return false;
+			}
+			$v |= ($oct << ((3 - $i) * 8));
+		}
+	
+		return $v;
+	}
 }
 endif; // if ( ! class_exists() ) :
 
-if ( php_sapi_name() === 'cli' ) {
-	$C = 'NetMisc_0_0_1';
+/**
+ * A class to check whether an IPv4 address is
+ * routable, internal||private, or loopback
+ */
+if ( ! class_exists('IPReservedCheck_0_0_1') ) :
+class IPReservedCheck_0_0_1 {
+	// help detect class name conflicts; called by using code
+	private static $evh_opt_id = 0xED00AA33;
+	public static function id_token () {
+		return self::$evh_opt_id;
+	}
 
+	// The misc class, above
+	const NM = 'NetMisc_0_0_1';
+
+	// Internal, private, with loopback at [0]
+	protected $masks_dots = array(
+		// loopback RFC 5735
+		'127.255.255.255',
+		// private RFC 1918
+		'10.255.255.255','172.31.255.255','192.168.255.255',
+		// broadcast to current network  RFC 1700
+		'0.255.255.255',
+		// Carrier-grade NAT RFC 6598
+		'100.127.255.255',
+		// autoconfiguration  RFC 5735
+		'169.254.255.255',
+		// DS-Lite transition RFC 6333
+		'192.0.0.7',
+		// "TEST-NET"  RFC 5737
+		'192.0.2.255',
+		// testing of inter-network ... separate subnets  RFC 2544
+		'198.19.255.255',
+		// "TEST-NET-2"  RFC 5737
+		'198.51.100.255',
+		// "TEST-NET-3"  RFC 5737
+		'203.0.113.255',
+		// Reserved for future use RFC 5735
+		'255.255.255.255',
+		// "limited broadcast" destination  RFC 5735
+		'255.255.255.255',
+		// following two are routable but special purpose
+		// 6to4 anycast relays  RFC 3068
+		'192.88.99.255',
+		// multicast assignments  RFC 5771
+		'239.255.255.255'
+		);
+	protected $nets_dots = array(
+		'127.0.0.1',
+		'10.0.0.0','172.16.0.0','192.168.0.0',
+		'0.0.0.0',
+		'100.64.0.0',
+		'169.254.0.0',
+		'192.0.0.0',
+		'192.0.2.0',
+		'198.18.0.0',
+		'198.51.100.0',
+		'203.0.113.0',
+		'240.0.0.0',
+		'255.255.255.255',
+		'192.88.99.0',
+		'224.0.0.0'
+		);
+	// the are host masks, i.e., net bits masked-out; thus the
+	// These must be made at runtime
+	protected $masks = null;
+	protected $nets = null;
+	
+	// arg may be array of two arrays like $masks_dots and $nets_dots,
+	// and the integer values in $masks and $nets will be regenerated
+	// accordingly
+	public function __construct($newdata = false)
+	{
+		if ( $newdata !== false ) {
+			$this->masks_dots = $newdata[0];
+			$this->nets_dots = $newdata[1];
+		}
+		
+		$this->intgen();
+	}
+
+	protected function intgen()
+	{
+		$this->masks = array();
+		foreach ( $this->masks_dots as $m ) {
+			$this->masks[] = self::ip4_dots2int($m);
+		}
+		$this->nets = array();
+		foreach ( $this->nets_dots as $n ) {
+			$this->nets[] = self::ip4_dots2int($n);
+		}
+		for ( $i = 0; $i < count($this->masks); $i++ ) {
+			$this->masks[$i] ^= $this->nets[$i];
+		}
+	}
+
+	public function chk_simple($addr)
+	{
+		return ($this->chk_resv_addr($addr) === false) ? false : true;
+	}
+
+	public function chk_resv_addr($addr, $loc = true)
+	{
+		$mx = count($this->nets);
+		$t = self::ip4_dots2int($addr);
+		for ( $i = $loc ? 0 : 1; $i < $mx; $i++ ) {
+			if ( ($t & ~$this->masks[$i]) === $this->nets[$i] ) {
+				return $i;
+			}
+		}
+		return false;
+	}
+
+	// check IP4 address arg for sanity
+	public static function is_addr_OK($addr) {
+		return NetMisc_0_0_1::is_addr_OK($addr);
+	}
+
+	// Unlike PHP ip2long(), this does
+	// not possibly return non-false on incomplete addresses.
+	public static function ip4_dots2int($addr)
+	{
+		return NetMisc_0_0_1::ip4_dots2int($addr);
+	}
+}
+endif; // class_exists('IPReservedCheck_0_0_1')
+
+
+if ( false && php_sapi_name() === 'cli' ) {
 	// checks
 	$chks = array(
 		'46.118.113.0/255.255.0.0/15',
@@ -197,13 +355,15 @@ if ( php_sapi_name() === 'cli' ) {
 		'46.118.113.0/255.224.0.0',
 		'255.255.127.63'
 	);
-	$o = array();
+
 	foreach ( $chks as $v ) {
-		$r = $C::netaddr_norm($v);
-		if ( $r === false ) {
-			$r = 'false';
-		}
-		printf("arg '%s' === '%s'\n", $v, '' . $r);
+		$o = array();
+		$r = NetMisc_0_0_1::netaddr_norm($v, $o, false);
+		//$r = NetMisc_0_0_1::netaddr_norm($v);
+
+		printf("arg '%s' === '%s': %s/%s/%s\n", $v, '' . $r,
+			$r ? $o[0] : 'NG', $r ? $o[1] : 'NG', $r ? $o[2] : 'NG');
+		//printf("arg '%s' === '%s'\n", $v, '' . $r);
 	}
 	
 	// checks
@@ -230,7 +390,7 @@ if ( php_sapi_name() === 'cli' ) {
 		$net = $aa[0];
 		$mask = $aa[1];
 		foreach ( $aa[2] as $a ) {
-			$t = $C::is_addr_in_net($a, $net, $mask);
+			$t = NetMisc_0_0_1::is_addr_in_net($a, $net, $mask);
 			printf(
 				"%s -- %s is %sin net %s with mask %s\n",
 				$t ? 'True' : 'False', $a, $t ? '' : 'not ',
