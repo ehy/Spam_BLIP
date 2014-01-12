@@ -49,8 +49,8 @@ if ( basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME']) ) {
 // supporting classes found in files named "${cl}.inc.php"
 // each class must define static method id_token() which returns
 // the correct int, to help avoid name clashes
-if ( ! function_exists( 'eh_plugin_paranoid_require_class' ) ) :
-function eh_plugin_paranoid_require_class ($cl) {
+if ( ! function_exists( 'spamblip_paranoid_require_class' ) ) :
+function spamblip_paranoid_require_class ($cl) {
 	$id = 0xED00AA33;
 	$meth = 'id_token';
 	if ( ! class_exists($cl) ) {
@@ -70,8 +70,8 @@ endif;
 
 // these support classes are in separate files as they are
 // not specific to this plugin, and may be used in others
-eh_plugin_paranoid_require_class('ChkBL_0_0_1');
-eh_plugin_paranoid_require_class('NetMisc_0_0_1');
+spamblip_paranoid_require_class('ChkBL_0_0_1');
+spamblip_paranoid_require_class('NetMisc_0_0_1');
 
 /**********************************************************************\
  *  misc. functions                                                   *
@@ -451,10 +451,10 @@ class Spam_BLIP_class {
 		// use Opt* classes for page, sections, and fields;
 		// these support classes are in separate files as they are
 		// not specific to this plugin, and may be used in others
-		eh_plugin_paranoid_require_class(self::mk_aclv('OptField'));
-		eh_plugin_paranoid_require_class(self::mk_aclv('OptSection'));
-		eh_plugin_paranoid_require_class(self::mk_aclv('OptPage'));
-		eh_plugin_paranoid_require_class(self::mk_aclv('Options'));
+		spamblip_paranoid_require_class(self::mk_aclv('OptField'));
+		spamblip_paranoid_require_class(self::mk_aclv('OptSection'));
+		spamblip_paranoid_require_class(self::mk_aclv('OptPage'));
+		spamblip_paranoid_require_class(self::mk_aclv('Options'));
 		
 		// mk_aclv adds a suffix to class names
 		$Cf = self::mk_aclv('OptField');
