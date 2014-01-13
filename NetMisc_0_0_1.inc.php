@@ -75,18 +75,35 @@ class NetMisc_0_0_1 {
 			$mi = ip2long($m);
 			$m = 32;
 			// mechanical approach: bit counting loop;
-			// PHP lacks log2(3), or we'd start with
-			// 32 - (int)log2(~$mi + 1);
+			// PHP lacks log2(3), so we cannot do
+			// 32 - log2(~$mi + 1);
 			while ( ! ($mi & 1) ) {
 				if ( --$m === 0 ) {
 					return false;
 				}
-				$mi >>= 1;
+				// PHP has signed integers, and sign copying
+				// on right-shift, so high bit needs mask-off
+				// on 32-bit hosts; it's harmless for 64-bit --
+				// this depends on 2's complement signed ints;
+				// will PHP or this code ever encounter a host
+				// that implements sign elsewise?
+				$mi = ($mi >> 1) & 0x7FFFFFFF;
 			}
 			//checks
 			if ( $m === 32 && ~$mi !== 0 ) {
 				return false;
-			} else if ( $m !== 32 && $mi !== ((1 << $m) - 1) ) {
+			// In the 2nd comparison below if the (int) cast is
+			// removed, the !== fails when $m is 31 and $mi is
+			// 2147483647 (i.e. !== yields true when it should
+			// be false). Must be an internal sign bit diddling
+			// bug where the cast forces php internal values
+			// into the same form, allowing the comp. to work
+			// as expected. BTW, this is on a 32-bit host, PHP
+			// 5.2 and 5.3 (later vers. not tested). PHP 5.2 has the
+			// additional bug that both '((1 << $m) - 1)' and
+			// '(1 << $m)' yield -2147483648 when $m is 31, while
+			// in 5.3 '((1 << $m) - 1)' is 2147483647 for $m==31.
+			} else if ( $m !== 32 && (int)($mi + 1) !== (int)(1 << $m) ) {
 				return false;
 			}
 			$m = '' . $m;
