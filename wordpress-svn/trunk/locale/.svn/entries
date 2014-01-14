@@ -1,14 +1,14 @@
 10
 
 dir
-838356
+838366
 http://plugins.svn.wordpress.org/spam-blip/trunk/locale
 http://plugins.svn.wordpress.org
 
 
 
-2014-01-09T17:59:08.786349Z
-835578
+2014-01-14T13:32:39.950765Z
+838357
 EdHynan
 
 
@@ -62,7 +62,7 @@ has-props
 
 spambl_l10n-en_US.mo
 file
-838357
+
 
 
 
@@ -96,7 +96,7 @@ has-props
 
 spambl_l10n.pot
 file
-838357
+
 
 
 
@@ -130,7 +130,7 @@ EdHynan
 
 spambl_l10n-en_US.po
 file
-838357
+
 
 
 
