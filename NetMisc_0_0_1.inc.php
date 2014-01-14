@@ -66,8 +66,13 @@ class NetMisc_0_0_1 {
 			$mi = (int)$m;
 			if ( $mi < 1 || $mi > 32 ) {
 				return false;
+			} else if ( $mi === 1 ) {
+				// Avoid PHP 32-bit sign bit bugs, see comment below
+				// beginning ``In the 2nd comparison ...''.
+				$mi = 0x80000000;
+			} else {
+				$mi = ~((1 << (32 - $mi)) - 1);
 			}
-			$mi = ~((1 << (32 - $mi)) - 1);
 			$mc = long2ip($mi);
 		// check traditional mask
 		} else if ( self::is_IP4_addr($m) ) {
@@ -84,22 +89,25 @@ class NetMisc_0_0_1 {
 				// PHP has signed integers, and sign copying
 				// on right-shift, so high bit needs mask-off
 				// on 32-bit hosts; it's harmless for 64-bit --
-				// this depends on 2's complement signed ints;
-				// will PHP or this code ever encounter a host
-				// that implements sign elsewise?
+				// this depends on 2's complement signed ints.
+				// Will this code ever encounter a host
+				// that implements sign elsewise? And what
+				// will PHP do on such a host? Docs describe
+				// arithmetic right shift -- presumably it can
+				// be expected.
 				$mi = ($mi >> 1) & 0x7FFFFFFF;
 			}
 			//checks
 			if ( $m === 32 && ~$mi !== 0 ) {
 				return false;
-			// In the 2nd comparison below if the (int) cast is
+			// In the 2nd comparison below if the (int) casts are
 			// removed, the !== fails when $m is 31 and $mi is
 			// 2147483647 (i.e. !== yields true when it should
-			// be false). Must be an internal sign bit diddling
-			// bug where the cast forces php internal values
-			// into the same form, allowing the comp. to work
-			// as expected. BTW, this is on a 32-bit host, PHP
-			// 5.2 and 5.3 (later vers. not tested). PHP 5.2 has the
+			// be false). The casts should not be needed: the
+			// operands are already ints. Must be a PHP bug where
+			// sign bit diddling is incomplete until forced (?).
+			// BTW, this is on a 32-bit host, PHP 5.2 and 5.3
+			// (later vers. not tested). PHP 5.2 has the
 			// additional bug that both '((1 << $m) - 1)' and
 			// '(1 << $m)' yield -2147483648 when $m is 31, while
 			// in 5.3 '((1 << $m) - 1)' is 2147483647 for $m==31.
@@ -119,17 +127,14 @@ class NetMisc_0_0_1 {
 	
 	// normalize an IP4 addr with netmask, sep'd by '/'
 	// if mask is missing it is considered /32; arg may
-	// have second '/' to allow both classful and CIDR
+	// have second '/' to allow both dotted and CIDR
 	// mask expressions, and they may be in either order,
 	// but IAC the first is used for normalization; if
 	// arg "aout" is an array its [0] is assigned addr,
-	// [1] gets CIDR (bitwidth) mask, [2] gets classful
-	// (dotted quad) mask; returns string of form
-	// "ADDR/CIDRMASK/CLASSFULMASK"
-	// (BTW, speaking of classful masks does not imply one
-	// must be actually classful; it may express a CIDR
-	// bitwidth too)
-	// The address before the firs '/' is not checked at all
+	// [1] gets CIDR (bitwidth) mask, [2] gets dotted
+	// quad mask; returns string of form
+	//     "ADDR/CIDRMASK/DOTTEDMASK"
+	// The address before the first '/' is not checked at all
 	// and may even be absent, but the '/' must be present
 	// so that explode() will work
 	public static function netaddr_norm($addr, &$aout = null, $chk2 = false)
