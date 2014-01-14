@@ -1,25 +1,7 @@
 K 25
 svn:wc:ra_dav:version-url
 V 32
-/!svn/ver/835578/spam-blip/trunk
-END
-OptField_0_0_2b.inc.php
-K 25
-svn:wc:ra_dav:version-url
-V 56
-/!svn/ver/795546/spam-blip/trunk/OptField_0_0_2b.inc.php
-END
-OptSection_0_0_2b.inc.php
-K 25
-svn:wc:ra_dav:version-url
-V 58
-/!svn/ver/795546/spam-blip/trunk/OptSection_0_0_2b.inc.php
-END
-Options_0_0_2b.inc.php
-K 25
-svn:wc:ra_dav:version-url
-V 55
-/!svn/ver/795546/spam-blip/trunk/Options_0_0_2b.inc.php
+/!svn/ver/835695/spam-blip/trunk
 END
 readme.txt
 K 25
@@ -31,7 +13,7 @@ Spam_BLIP.php
 K 25
 svn:wc:ra_dav:version-url
 V 46
-/!svn/ver/835695/spam-blip/trunk/Spam_BLIP.php
+/!svn/ver/838357/spam-blip/trunk/Spam_BLIP.php
 END
 Makefile
 K 25
@@ -55,11 +37,29 @@ NetMisc_0_0_1.inc.php
 K 25
 svn:wc:ra_dav:version-url
 V 54
-/!svn/ver/835578/spam-blip/trunk/NetMisc_0_0_1.inc.php
+/!svn/ver/838357/spam-blip/trunk/NetMisc_0_0_1.inc.php
 END
 ChkBL_0_0_1.inc.php
 K 25
 svn:wc:ra_dav:version-url
 V 52
 /!svn/ver/835578/spam-blip/trunk/ChkBL_0_0_1.inc.php
+END
+OptField_0_0_2b.inc.php
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/!svn/ver/795546/spam-blip/trunk/OptField_0_0_2b.inc.php
+END
+OptSection_0_0_2b.inc.php
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/!svn/ver/795546/spam-blip/trunk/OptSection_0_0_2b.inc.php
+END
+Options_0_0_2b.inc.php
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/!svn/ver/795546/spam-blip/trunk/Options_0_0_2b.inc.php
 END
