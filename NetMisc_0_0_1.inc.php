@@ -111,7 +111,7 @@ class NetMisc_0_0_1 {
 			// additional bug that both '((1 << $m) - 1)' and
 			// '(1 << $m)' yield -2147483648 when $m is 31, while
 			// in 5.3 '((1 << $m) - 1)' is 2147483647 for $m==31.
-			} else if ( $m !== 32 && (int)($mi + 1) !== (int)(1 << $m) ) {
+			} else if ( $m < 32 && (int)($mi + 1) !== (int)(1 << $m) ) {
 				return false;
 			}
 			$m = '' . $m;
