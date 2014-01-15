@@ -1,7 +1,7 @@
 10
 
 dir
-838366
+839187
 http://plugins.svn.wordpress.org/spam-blip/tags
 http://plugins.svn.wordpress.org
 
@@ -117,4 +117,27 @@ dir
 
 http://plugins.svn.wordpress.org/spam-blip/trunk
 820301
+
+1.0.2
+dir
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+http://plugins.svn.wordpress.org/spam-blip/trunk
+839186
 
