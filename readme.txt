@@ -138,6 +138,8 @@ Choose any one, they all work.
 
 == Changelog ==
 
+= 1.0.3 =
+
 = 1.0.2 =
 * Small code cleanups.
 * Tweak database table options: Intro text re. max records clarified;
@@ -166,6 +168,8 @@ Choose any one, they all work.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.3 =
 
 = 1.0.2 =
 * User-set blacklist and whitelist:
