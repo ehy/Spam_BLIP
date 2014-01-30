@@ -4428,8 +4428,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		}
 
 		// use no class, but do use deprecated align
-		$code = 'widget-div';
-		$dv = '<div id="'.$code.'" align="left">';
+		$code = sprintf('Spam_BLIP_widget_%06u', rand());
+		$dv = '<div id="'.$code.'" class="widget" align="left">';
 		echo "\n<!-- Spam BLIP plugin: info widget div -->\n{$dv}";
 
 		$wt = 'wptexturize';  // display with char translations
