@@ -3232,7 +3232,7 @@ class Spam_BLIP_class {
 				$rsz = __('RESERVED', 'spambl_l10n');
 				// TRANSLATORS: word for ietf/iana loopback network
 				$lpb = __('LOOPBACK', 'spambl_l10n');
-				$ret = $ret ? $rsv : $lpb;
+				$ret = $ret ? $rsz : $lpb;
 				// TRANSLATORS: %1$s is either "RESERVED" or "LOOPBACK";
 				// see comments above.
 				// %2$s is an IPv4 dotted quad address
