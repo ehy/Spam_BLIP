@@ -119,16 +119,21 @@ class NetMisc_0_0_1 {
 
 	// take range like 223.240.0.0 - 223.247.255.255
 	// and return a ADDR/CIDRMASK/DOTTEDMASK string,
-	// and place the valuse (in order above) in &$aout
+	// and place the values (in order above) in &$aout
 	public static function netrange_norm($amin, $amax, &$aout)
 	{
-		$a = (ip2long($amin) & 0xFFFFFFFF);
-		$b = (ip2long($amax) & 0xFFFFFFFF);
+		$a = self::ip4_dots2int($amin);
+		if ( $a === false ) {
+			return false;
+		}
+		$b = self::ip4_dots2int($amax);
+		if ( $b === false ) {
+			return false;
+		}
 
 		$g = long2ip(~($a ^ $b) & 0xFFFFFFFF);
-		$s = self::netmask_norm($g, $g);
-
-		if ( ! $s )  {
+		// $g gives and receives
+		if ( self::netmask_norm($g, $g) !== true ) {
 			return false;
 		}
 
