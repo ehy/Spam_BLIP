@@ -1507,7 +1507,7 @@ class Spam_BLIP_class {
 							if ( preg_match($nma, $l) ) {
 								$nma = explode('-', $l);
 								$chk = NetMisc_0_0_1::netrange_norm(
-									trim($nma[0]), trim($nam[1]), $nma);
+									trim($nma[0]), trim($nma[1]), $nma);
 								if ( $chk !== false ) {
 									$l = $chk;
 								}
