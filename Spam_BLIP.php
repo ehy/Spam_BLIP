@@ -291,7 +291,7 @@ class Spam_BLIP_class {
 	// js subdirectory
 	const settings_jsdir = 'js';
 	// js file for settings page
-	const settings_jsname = 'screens.js';
+	const settings_jsname = 'screens.min.js';
 	// js path, built in ctor
 	protected $settings_js;
 	// JS: name of class to control textare/button pairs
