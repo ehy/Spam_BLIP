@@ -1501,6 +1501,17 @@ class Spam_BLIP_class {
 						}
 						$chk = NetMisc_0_0_1::is_addr_OK($l);
 						if ( $chk === false ) {
+							// New v. 1.0.3: entry may be
+							// a range netmin-netmax
+							$nma = '/[0-9\.]+[ \t]*-[ \t]*[0-9\.]+/';
+							if ( preg_match($nma, $l) ) {
+								$nma = explode('-', $l);
+								$chk = NetMisc_0_0_1::netrange_norm(
+									trim($nma[0]), trim($nam[1]), $nma);
+								if ( $chk !== false ) {
+									$l = $chk;
+								}
+							}
 							// New v. 1.0.2: entry may be
 							// addr/netmask[/netmask], 2nd mask
 							// optional so that one may be CIDR and
@@ -2106,7 +2117,12 @@ class Spam_BLIP_class {
 			to the left of the slash and the network mask appears
 			to the right of the slash. The network mask may be given
 			in CIDR notation (number of bits) or the traditional
-			dotted quad form. When the settings are submitted, these
+			dotted quad form. A subnet may also be given as a range
+			from minimum to maximum network address, as in
+			"<code>N.N.N.N - N.N.N.N</code>". (A subnet specified
+			as a range is often found in <strong>WHOIS</strong>
+			output.)
+			When the settings are submitted, these
 			arguments are normalized so that
 			"<code>N.N.N.N/CIDR/N.N.N.N</code>"
 			will appear. You may specify both CIDR and dotted quad
