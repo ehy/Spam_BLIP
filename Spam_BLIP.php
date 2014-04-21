@@ -43,7 +43,7 @@ Text Domain: spambl_l10n
 // check for naughty direct invocation; w/o this we'd soon die
 // from undefined WP functions anyway, but let's check anyway
 if ( basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME']) ) {
-	die("Oh, you naughty boy||girl||other!\n");
+	die("Don't invoke me like that!\n");
 }
 
 // supporting classes found in files named "${cl}.inc.php"
@@ -335,10 +335,23 @@ class Spam_BLIP_class {
 		$cl = __CLASS__;
 
 		if ( $adm ) {
+			// Some things that must be *before* 'init'
+			// NOTE cannot call current_user_can() because
+			// its dependencies might not be ready at this point!
+			// Use condition on current_user_can() in the callbacks
+			// keep it clean: {de,}activation
+			$aa = array($cl, 'on_deactivate');
+			register_deactivation_hook($pf, $aa);
+			$aa = array($cl, 'on_activate');
+			register_activation_hook($pf,   $aa);
+
+			$aa = array($cl, 'on_uninstall');
+			register_uninstall_hook($pf,    $aa);
+	
 			// add 'Settings' link on the plugins page entry
 			// cannot be in activate hook
 			$name = plugin_basename($pf);
-			add_filter("plugin_action_links_$name",
+			add_filter("plugin_action_links_" . $name,
 				array($cl, 'plugin_page_addlink'));
 		}
 
@@ -851,10 +864,14 @@ class Spam_BLIP_class {
 	
 	// deactivate cleanup
 	public static function on_deactivate() {
+		if ( ! current_user_can('activate_plugins') ) {
+			return;
+		}
+
 		$wreg = __CLASS__;
 		$name = plugin_basename(self::mk_pluginfile());
 		$aa = array($wreg, 'plugin_page_addlink');
-		remove_filter("plugin_action_links_$name", $aa);
+		remove_filter("plugin_action_links_" . $name, $aa);
 
 		self::unregi_widget();
 
@@ -876,6 +893,10 @@ class Spam_BLIP_class {
 
 	// activate setup
 	public static function on_activate() {
+		if ( ! current_user_can('activate_plugins') ) {
+			return;
+		}
+
 		$wreg = __CLASS__;
 		$aa = array($wreg, 'regi_widget');
 		add_action('widgets_init', $aa, 1);
@@ -895,6 +916,10 @@ class Spam_BLIP_class {
 
 	// uninstall cleanup
 	public static function on_uninstall() {
+		if ( ! current_user_can('install_plugins') ) {
+			return;
+		}
+
 		self::unregi_widget();
 		
 		$opts = self::get_opt_group();
@@ -965,19 +990,6 @@ class Spam_BLIP_class {
 		$cl = __CLASS__; // for static methods callbacks
 
 		if ( $adm ) {
-			// keep it clean: {de,}activation
-			$pf = self::mk_pluginfile();
-			if ( current_user_can('activate_plugins') ) {
-				$aa = array($cl, 'on_deactivate');
-				register_deactivation_hook($pf, $aa);
-				$aa = array($cl, 'on_activate');
-				register_activation_hook($pf,   $aa);
-			}
-			if ( current_user_can('install_plugins') ) {
-				$aa = array($cl, 'on_uninstall');
-				register_uninstall_hook($pf,    $aa);
-			}
-	
 			//$aa = array($cl, 'filter_admin_print_scripts');
 			//add_action('admin_print_scripts', $aa);
 	
