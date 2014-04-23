@@ -2234,6 +2234,7 @@ class Spam_BLIP_class {
 	
 		$jsarg = sprintf('"%s","%s","%s","%s","%s"',
 			$ltxid, $rtxid, $lbtid, $rbtid, $dbg_span);
+		// TODO: lose the align="" in the table below
 	?>
 	
 		<table id="<?php echo $tableid; ?>"><tbody>
@@ -4457,7 +4458,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 		// use no class, but do use deprecated align
 		$code = sprintf('Spam_BLIP_widget_%06u', rand());
-		$dv = '<div id="'.$code.'" class="widget" align="left">';
+		// overdue: 1.0.4 removed deprecated align
+		$dv = '<div id="'.$code.'" class="widget">';
 		echo "\n<!-- Spam BLIP plugin: info widget div -->\n{$dv}";
 
 		$wt = 'wptexturize';  // display with char translations
@@ -4630,7 +4632,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			);
 		}
 		if ( $cap ) {
-			echo '<p><span align="center">' .$wt($cap). '</span></p>';
+			// overdue: 1.0.4 removed deprecated align
+			echo '<p><span>' . $wt($cap) . '</span></p>';
 		}
 		echo "\n</div>\n";
 		echo "<!-- Spam BLIP plugin: info widget div ends -->\n";
