@@ -1003,9 +1003,15 @@ class Spam_BLIP_class {
 				 self::get_usedata_option() != 'false' ) {
 				$this->db_create_table();
 	
-				// not sufficiently certain about this; we
-				// do our own table maintenance anyway
-				if ( false && defined('WP_ALLOW_REPAIR') ) {
+				// user should not have 'WP_ALLOW_REPAIR'
+				// defined all the time; naughty types could
+				// repeatedly invoke wp-admin/maint/repair.php
+				// to increase server load and lockup DB and
+				// who knows, maybe even exploit MySQL bugs.
+				// IAC, for real use, it should be OK to
+				// include our table -- WP does CHECK TABLE
+				// and REPAIR TABLE and maybe ANALYZE TABLE
+				if ( defined('WP_ALLOW_REPAIR') ) {
 					$aa = array($this, 'filter_tables_to_repair');
 					add_filter('tables_to_repair', $aa, 100);
 				}
