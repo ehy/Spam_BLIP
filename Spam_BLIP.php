@@ -1459,9 +1459,9 @@ class Spam_BLIP_class {
 							$e = __('bad TTL option: "%s"', 'spambl_l10n');
 							$e = sprintf($e, $ot);
 							self::errlog($e);
-							add_settings_error(self::wt($k),
+							add_settings_error(self::ht($k),
 								sprintf('%s[%s]', self::opt_group, $k),
-								self::wt($e), 'error');
+								self::ht($e), 'error');
 							$a_out[$k] = $oo;
 							$nerr++;
 							break;
@@ -1493,9 +1493,9 @@ class Spam_BLIP_class {
 							$e = __('bad maximum: "%s"', 'spambl_l10n');
 							$e = sprintf($e, $ot);
 							self::errlog($e);
-							add_settings_error(self::wt($k),
+							add_settings_error(self::ht($k),
 								sprintf('%s[%s]', self::opt_group, $k),
-								self::wt($e), 'error');
+								self::ht($e), 'error');
 							$a_out[$k] = $oo;
 							$nerr++;
 							break;
@@ -1567,9 +1567,9 @@ class Spam_BLIP_class {
 							$e = __('bad user %1$s address set: "%2$s"', 'spambl_l10n');
 							$e = sprintf($e, $lnm, $l);
 							self::errlog($e);
-							add_settings_error(self::wt($k),
+							add_settings_error(self::ht($k),
 								sprintf('%s[%s]', self::opt_group, $k),
-								self::wt($e), 'error');
+								self::ht($e), 'error');
 							// error counter
 							$nerr++;
 							// for special handling
@@ -1619,9 +1619,9 @@ class Spam_BLIP_class {
 							$e = __('bad blacklist domain set: "%s"', 'spambl_l10n');
 							$e = sprintf($e, $ln);
 							self::errlog($e);
-							add_settings_error(self::wt($k),
+							add_settings_error(self::ht($k),
 								sprintf('%s[%s]', self::opt_group, $k),
-								self::wt($e), 'error');
+								self::ht($e), 'error');
 							// error counter
 							$nerr++;
 							// for special handling
@@ -1674,9 +1674,9 @@ class Spam_BLIP_class {
 						$e = sprintf('bad checkbox option: %s[%s]',
 							$k, $v);
 						self::errlog($e);
-						add_settings_error(self::wt($k),
+						add_settings_error(self::ht($k),
 							sprintf('%s[%s]', self::opt_group, $k),
-							self::wt($e), 'error');
+							self::ht($e), 'error');
 						$a_out[$k] = $oo;
 						$nerr++;
 					} else {
@@ -1687,10 +1687,10 @@ class Spam_BLIP_class {
 				default:
 					$e = "funny key in validate opts: '" . $k . "'";
 					self::errlog($e);
-					add_settings_error(self::wt($k),
+					add_settings_error(self::ht($k),
 						sprintf('ERR_%s[%s]',
 							self::opt_group, self::ht($k)),
-						self::wt($e), 'error');
+						self::ht($e), 'error');
 					$nerr++;
 			}
 		}
@@ -1742,7 +1742,7 @@ class Spam_BLIP_class {
 			$str = sprintf($fmt, $nupd);
 			$type = $nerr == 0 ? 'updated' : 'updated error';
 			add_settings_error(self::opt_group, self::opt_group,
-				self::wt($str), $type);
+				self::ht($str), $type);
 		}
 		
 		return $a_out;
