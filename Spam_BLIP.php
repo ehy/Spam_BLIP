@@ -1685,7 +1685,9 @@ class Spam_BLIP_class {
 					}
 					break;
 				default:
-					$e = "funny key in validate opts: '" . $k . "'";
+					$e = sprintf(
+						__('bad key in option validation: "%s"', 'spambl_l10n'
+						, $k);
 					self::errlog($e);
 					add_settings_error(self::ht($k),
 						sprintf('ERR_%s[%s]',
