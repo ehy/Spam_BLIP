@@ -1742,7 +1742,7 @@ class Spam_BLIP_class {
 			$str = sprintf($fmt, $nupd);
 			$type = $nerr == 0 ? 'updated' : 'updated error';
 			add_settings_error(self::opt_group, self::opt_group,
-				self::ht($str), $type);
+				self::wt($str), $type);
 		}
 		
 		return $a_out;
