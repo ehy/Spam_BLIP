@@ -3762,40 +3762,37 @@ class Spam_BLIP_class {
 		return $this->data_table;
 	}
 	
-	// lock table for some ops, in case concurrent page requests
-	// cause intermixed calls to these routines from different sessions
-	// *DO* unlock when done: MySQL docs say the lock will prevent
-	// access to *other* tables, which would prevent WP in any
-	// subsequent DB ops.
-	// UPDATE: we possibly lack privilege for "LOCK TABLES",
+	// Probably lack privilege for "LOCK TABLES",
 	// so use this advisory form; unlocking is less critical,
-	// but of course still should not be forgotten
-	protected function db_lock_table($type = 'WRITE') {
+	// but of course still should not be forgotten (server
+	// removes a lock when connection is closed, say docs).
+	// Added 1.0.4: $tmo: timeout arg (was a hardcoded 10);
+	// default is long to cover varied net symptoms, plus
+	// $type arg removed as it was only an artifact
+	protected function db_lock_table($tmo = 45) {
 		global $wpdb;
 		$tbl = $this->db_tablename();
 		$lck = 'lck_' . $tbl;
-		$r = $wpdb->get_results(
-			"SELECT GET_LOCK('{$lck}',10);", ARRAY_N
-		);
+		$qs = sprintf("SELECT GET_LOCK('%s',%u);", $lck, (int)$tmo);
+		$r = $wpdb->get_results($qs, ARRAY_N);
 		if ( is_array($r) && is_array($r[0]) ) {
 			return (int)$r[0][0];
 		}
-		self::errlog("FAILED SELECT GET_LOCK('{$lck}',10);");
+		self::errlog("FAILED get lock query " . $qs);
 		return false;
 	}
 	
 	// unlock locked table: DO NOT FORGET
-	protected function db_unlock_table($type = 'WRITE') {
+	protected function db_unlock_table() {
 		global $wpdb;
 		$tbl = $this->db_tablename();
 		$lck = 'lck_' . $tbl;
-		$r = $wpdb->get_results(
-			"SELECT RELEASE_LOCK('{$lck}');", ARRAY_N
-		);
+		$qs = sprintf("SELECT RELEASE_LOCK('%s');", $lck);
+		$r = $wpdb->get_results($qs, ARRAY_N);
 		if ( is_array($r) && is_array($r[0]) ) {
 			return (int)$r[0][0];
 		}
-		self::errlog("FAILED SELECT RELEASE_LOCK('{$lck}');");
+		self::errlog("FAILED release lock query " . $qs);
 		return false;
 	}
 	
@@ -3854,6 +3851,8 @@ class Spam_BLIP_class {
 		$fpct = 0;
 		$len = 0;
 
+		$this->db_lock_table();
+		
 		$r = $wpdb->get_results(
 			"SELECT data_length, data_free "
 			. "FROM information_schema.TABLES "
@@ -3893,6 +3892,8 @@ class Spam_BLIP_class {
 				sprintf('ANALYZE: length %d, free %d', $len, $free));
 			$wpdb->query("ANALYZE TABLE {$tbl}");
 		}
+
+		$this->db_unlock_table();
 	}
 	
 	// create the data store table
@@ -3963,7 +3964,6 @@ CREATE TABLE $tbl (
 
 EOQ;
 
-		// back to pretty-pretty indents!
 		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 		dbDelta($qs);
 
@@ -3984,9 +3984,12 @@ EOQ;
 
 		global $wpdb;
 		$tbl = $this->db_tablename();
-		
+
 		$q = "SELECT * FROM {$tbl} WHERE address = '{$addr}'";
+		
+		$this->db_lock_table();
 		$r = $wpdb->get_row($q, ARRAY_A);
+		$this->db_unlock_table();
 
 		if ( is_array($r) ) {
 			$this->db_get_addr_cache = array($addr, $r);
@@ -4004,9 +4007,11 @@ EOQ;
 		global $wpdb;
 		$tbl = $this->db_tablename();
 
+		$this->db_lock_table();
 		$r = $wpdb->get_results(
 			"SELECT COUNT(*) FROM {$tbl}", ARRAY_N
 		);
+		$this->db_unlock_table();
 
 		if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
 			return $r[0][0];
@@ -4028,7 +4033,9 @@ EOQ;
 			$q .= ' GROUP BY ' . $group;
 		}
 
+		$this->db_lock_table();
 		$r = $wpdb->get_results($q, ARRAY_N);
+		$this->db_unlock_table();
 
 		if ( is_array($r) ) {
 			return $r;
@@ -4044,7 +4051,6 @@ EOQ;
 		
 		$ts = sprintf('%u', 0 + $ts);
 
-		$this->db_lock_table();
 		// NOTE: address <> '0.0.0.0' was necessary with mysql
 		// commandline client:
 		// "safe update [...] without a WHERE that uses a KEY column";
@@ -4053,6 +4059,7 @@ EOQ;
 		// it's added for 'noia's sake, and should not affect
 		// results as address should never be '0.0.0.0'
 		$noid = "address <> '0.0.0.0' AND ";
+		$this->db_lock_table();
 		$wpdb->get_results(
 			"DELETE IGNORE FROM {$tbl} WHERE {$noid}seenlast < {$ts};",
 			ARRAY_N
@@ -4073,9 +4080,6 @@ EOQ;
 	// remove older rows so that row count == $max
 	protected function db_remove_above_max($mx) {
 		$ret = false;
-		
-		// these several ops should lock out other sessions
-		$this->db_lock_table();
 
 		// 'row_count'
 		$c = $this->db_get_rowcount();
@@ -4109,6 +4113,7 @@ EOQ;
 			// it's added for 'noia's sake, and should not affect
 			// results as address should never be '0.0.0.0'
 			$noid = "WHERE address <> '0.0.0.0' ";
+			$this->db_lock_table();
 			$wpdb->get_results(
 				"DELETE FROM {$tbl} {$noid}ORDER BY seenlast LIMIT {$c};",
 				ARRAY_N
@@ -4117,14 +4122,13 @@ EOQ;
 				"SELECT ROW_COUNT();",
 				ARRAY_N
 			);
+			$this->db_unlock_table();
 	
 			if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
 				$ret = (int)$r[0][0];
 			}
 		} while ( false );
 
-		$this->db_unlock_table();
-		
 		return $ret;
 	}
 
@@ -4157,11 +4161,9 @@ EOQ;
 		$tbl = $this->db_tablename();
 		$r = false;
 
-		$this->db_lock_table();
-
 		$q = "DELETE * FROM {$tbl} WHERE address = '{$addr}'";
+		$this->db_lock_table();
 		$r = $wpdb->get_results($q, ARRAY_N);
-
 		$this->db_unlock_table();
 
 		return $r;
@@ -4183,9 +4185,11 @@ EOQ;
 		global $wpdb;
 		$tbl = $this->db_tablename();
 
+		$this->db_lock_table();
 		$r = $wpdb->insert($tbl, $a,
 			array('%s','%d','%d','%d','%s','%d')
 		);
+		$this->db_unlock_table();
 
 		return $r;
 	}
@@ -4193,16 +4197,13 @@ EOQ;
 	// update record from an associative array
 	// will insert record that doesn't exist if $insert is true
 	protected function db_update_array($a, $insert = true) {
-		$this->db_lock_table();
 		// insert if record dies not exist
 		$r = $this->db_get_address($a['address']);
 		if ( ! is_array($r) ) {
 			if ( $insert === true ) {
 				$r = $this->db_insert_array($a, false);
-				$this->db_unlock_table();
 				return $r;
 			}
-			$this->db_unlock_table();
 			return false;
 		}
 
@@ -4231,12 +4232,13 @@ EOQ;
 		$r['hitcount'] = (int)$r['hitcount'] + (int)$a['hitcount'];
 		
 		$wh = array('address' => $a['address']);
+		$this->db_lock_table();
 		$r = $wpdb->update($tbl, $r, $wh,
 			array('%s','%d','%d','%d','%s','%d'),
 			array('%s')
 		);
-
 		$this->db_unlock_table();
+
 		return $r;
 	}
 	
