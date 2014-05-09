@@ -3974,7 +3974,7 @@ EOQ;
 	// get record for an IP address; returns null
 	// (as $wpdb->get_row() is documented to do),
 	// or associative array
-	protected function db_get_address($addr) {
+	protected function db_get_address($addr, $lock = true) {
 		if ( $this->db_get_addr_cache !== null
 			&& $this->db_get_addr_cache[0] === $addr ) {
 			return $this->db_get_addr_cache[1];
@@ -3985,9 +3985,12 @@ EOQ;
 
 		$q = "SELECT * FROM {$tbl} WHERE address = '{$addr}'";
 		
-		$this->db_lock_table();
+		
+		if ( $lock )
+			$this->db_lock_table();
 		$r = $wpdb->get_row($q, ARRAY_A);
-		$this->db_unlock_table();
+		if ( $lock )
+			$this->db_unlock_table();
 
 		if ( is_array($r) ) {
 			$this->db_get_addr_cache = array($addr, $r);
@@ -4001,15 +4004,17 @@ EOQ;
 	// get number of records -- checks the store version options
 	// first for whether the table should exist -- returns
 	// false if the option does not exist
-	protected function db_get_rowcount() {
+	protected function db_get_rowcount($lock = true) {
 		global $wpdb;
 		$tbl = $this->db_tablename();
 
-		$this->db_lock_table();
+		if ( $lock )
+			$this->db_lock_table();
 		$r = $wpdb->get_results(
 			"SELECT COUNT(*) FROM {$tbl}", ARRAY_N
 		);
-		$this->db_unlock_table();
+		if ( $lock )
+			$this->db_unlock_table();
 
 		if ( is_array($r) && isset($r[0]) && isset($r[0][0]) ) {
 			return $r[0][0];
@@ -4019,7 +4024,8 @@ EOQ;
 	}
 
 	// general function of select
-	protected function db_FUNC($f, $where = null, $group = null) {
+	protected
+	function db_FUNC($f, $where = null, $group = null, $lock = true) {
 		global $wpdb;
 		$tbl = $this->db_tablename();
 		
@@ -4031,9 +4037,11 @@ EOQ;
 			$q .= ' GROUP BY ' . $group;
 		}
 
-		$this->db_lock_table();
+		if ( $lock )
+			$this->db_lock_table();
 		$r = $wpdb->get_results($q, ARRAY_N);
-		$this->db_unlock_table();
+		if ( $lock )
+			$this->db_unlock_table();
 
 		if ( is_array($r) ) {
 			return $r;
@@ -4149,7 +4157,7 @@ EOQ;
 
 	// delete record from address -- uses method
 	// added in WP 3.4.0
-	protected function db_remove_address($addr) {
+	protected function db_remove_address($addr, $lock = true) {
 		if ( $this->db_get_addr_cache !== null
 			&& $this->db_get_addr_cache[0] === $addr ) {
 			$this->db_get_addr_cache = null;
@@ -4160,9 +4168,11 @@ EOQ;
 		$r = false;
 
 		$q = "DELETE * FROM {$tbl} WHERE address = '{$addr}'";
-		$this->db_lock_table();
+		if ( $lock )
+			$this->db_lock_table();
 		$r = $wpdb->get_results($q, ARRAY_N);
-		$this->db_unlock_table();
+		if ( $lock )
+			$this->db_unlock_table();
 
 		return $r;
 	}
@@ -4171,10 +4181,11 @@ EOQ;
 	// $check1st may be false if caller is certain
 	// the existence of the record need not be checked
 	// NOTE: does *not* lock!
-	protected function db_insert_array($a, $check1st = true) {
+	protected
+	function db_insert_array($a, $check1st = true, $lock = true) {
 		// optional check for record first
 		if ( $check1st !== false ) {
-			$r = $this->db_get_address($a['address']);
+			$r = $this->db_get_address($a['address'], $lock);
 			if ( is_array($r) ) {
 				return false;
 			}
@@ -4183,26 +4194,33 @@ EOQ;
 		global $wpdb;
 		$tbl = $this->db_tablename();
 
-		$this->db_lock_table();
+		if ( $lock )
+			$this->db_lock_table();
 		$r = $wpdb->insert($tbl, $a,
 			array('%s','%d','%d','%d','%s','%d')
 		);
-		$this->db_unlock_table();
+		if ( $lock )
+			$this->db_unlock_table();
 
 		return $r;
 	}
 	
 	// update record from an associative array
 	// will insert record that doesn't exist if $insert is true
-	protected function db_update_array($a, $insert = true) {
+	protected
+	function db_update_array($a, $insert = true, $lock = true) {
+		if ( $lock )
+			$this->db_lock_table();
+
 		// insert if record dies not exist
-		$r = $this->db_get_address($a['address']);
+		$r = $this->db_get_address($a['address'], false);
 		if ( ! is_array($r) ) {
+			$r = false;
 			if ( $insert === true ) {
-				$r = $this->db_insert_array($a, false);
-				return $r;
+				$r = $this->db_insert_array($a, false, false);
 			}
-			return false;
+			$this->db_unlock_table();
+			return $r;
 		}
 
 		global $wpdb;
@@ -4230,31 +4248,36 @@ EOQ;
 		$r['hitcount'] = (int)$r['hitcount'] + (int)$a['hitcount'];
 		
 		$wh = array('address' => $a['address']);
-		$this->db_lock_table();
 		$r = $wpdb->update($tbl, $r, $wh,
 			array('%s','%d','%d','%d','%s','%d'),
 			array('%s')
 		);
-		$this->db_unlock_table();
+
+		if ( $lock )
+			$this->db_unlock_table();
 
 		return $r;
 	}
 	
 	// make insert/update array from separate args
-	protected function db_make_array(
-		$addr, $hitincr, $time, $type = 'comments')
+	protected
+	function db_make_array($addr, $hitincr, $time, $type = 'comments')
 	{
 		// setup the enum field "lasttype"; avoid assumption
 		// that arg and enum keys will match, although
 		// they should -- this can be made helpful or fuzzy, later
 		$t = 'x1';
-		if ( $type === 'comments' ) { $t = 'comments'; }
-		if ( $type === 'pings' )    { $t = 'pings'; }
-		if ( $type === 'torx' )   { $t = 'torx'; }
-		if ( $type === 'x2' )   { $t = 'x2'; }
-		if ( $type === 'non' )   { $t = 'non'; }
-		if ( $type === 'white' )   { $t = 'white'; }
-		if ( $type === 'black' )   { $t = 'black'; }
+		switch ( $type ) {
+			case 'comments': $t = 'comments'; break;
+			case 'pings'   : $t = 'pings';    break;
+			case 'torx'    : $t = 'torx';     break;
+			case 'non'     : $t = 'non';      break;
+			case 'white'   : $t = 'white';    break;
+			case 'black'   : $t = 'black';    break;
+			case 'x2'      : $t = 'x2';       break;
+			case 'x1'      : $t = 'x1';       break;
+			default        : $t = 'x1';       break;
+		}
 
 		return array(
 			'address'  => $addr,
@@ -4269,7 +4292,10 @@ EOQ;
 	// public: get some info on the data store; e.g., for
 	// the widget -- return map where ['k'] is an array
 	// of avalable keys, not including 'k'
-	public function get_db_info() {
+	public function get_db_info($lock = true) {
+		if ( $lock )
+			$this->db_lock_table();
+
 		$r = array(
 			'k' => array()
 		);
@@ -4277,8 +4303,10 @@ EOQ;
 		//global $wpdb;
 		//$wpdb->show_errors();
 		// 'row_count'
-		$c = $this->db_get_rowcount();
+		$c = $this->db_get_rowcount(false);
 		if ( $c === false ) {
+			if ( $lock )
+				$this->db_unlock_table();
 			return false;
 		}
 		
@@ -4297,13 +4325,13 @@ EOQ;
 
 		$w = '' . ($tm - $hour);
 		$a = $this->db_FUNC('COUNT(*)',
-			"seenlast > {$w} AND ({$types})");
+			"seenlast > {$w} AND ({$types})", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'hour';
 			$r['hour'] = $a[0][0];
 		}
 		$a = $this->db_FUNC('COUNT(*)',
-			"seeninit > {$w} AND ({$types})");
+			"seeninit > {$w} AND ({$types})", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'hourinit';
 			$r['hourinit'] = $a[0][0];
@@ -4311,13 +4339,13 @@ EOQ;
 
 		$w = '' . ($tm - $day);
 		$a = $this->db_FUNC('COUNT(*)',
-			"seenlast > {$w} AND ({$types})");
+			"seenlast > {$w} AND ({$types})", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'day';
 			$r['day'] = $a[0][0];
 		}
 		$a = $this->db_FUNC('COUNT(*)',
-			"seeninit > {$w} AND ({$types})");
+			"seeninit > {$w} AND ({$types})", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'dayinit';
 			$r['dayinit'] = $a[0][0];
@@ -4325,52 +4353,55 @@ EOQ;
 
 		$w = '' . ($tm - $week);
 		$a = $this->db_FUNC('COUNT(*)',
-			"seenlast > {$w} AND ({$types})");
+			"seenlast > {$w} AND ({$types})", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'week';
 			$r['week'] = $a[0][0];
 		}
 		$a = $this->db_FUNC('COUNT(*)',
-			"seeninit > {$w} AND ({$types})");
+			"seeninit > {$w} AND ({$types})", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'weekinit';
 			$r['weekinit'] = $a[0][0];
 		}
 
-		$a = $this->db_FUNC("SUM(hitcount)", "{$types}");
+		$a = $this->db_FUNC("SUM(hitcount)", "{$types}", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'htotal';
 			$r['htotal'] = $a[0][0];
 		}
 
 		$w = 'white';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'white';
 			$r['white'] = $a[0][0];
 		}
 		
 		$w = 'black';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'black';
 			$r['black'] = $a[0][0];
 		}
 
 		$w = 'torx';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'tor';
 			$r['tor'] = $a[0][0];
 		}
 		
 		$w = 'non';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'");
+		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'non';
 			$r['non'] = $a[0][0];
 		}
 		
+		if ( $lock )
+			$this->db_unlock_table();
+
 		$tf = self::best_time() - $tf;
 		self::dbglog('database info gathered in ' . $tf . ' seconds');
 		return $r;
