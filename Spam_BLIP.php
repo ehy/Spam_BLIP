@@ -954,7 +954,7 @@ class Spam_BLIP_class {
 	}
 
 	// register the Spam_BLIP_plugin widget
-	public static function regi_widget ($fargs = array()) {
+	public static function regi_widget($fargs = array()) {
 		global $wp_widget_factory;
 		if ( ! isset($wp_widget_factory) ) {
 			return;
@@ -969,7 +969,7 @@ class Spam_BLIP_class {
 	}
 
 	// unregister the Spam_BLIP_plugin widget
-	public static function unregi_widget () {
+	public static function unregi_widget() {
 		global $wp_widget_factory;
 		if ( ! isset($wp_widget_factory) ) {
 			return;
@@ -981,7 +981,7 @@ class Spam_BLIP_class {
 	}
 
 	// to be done at WP init stage
-	public function init_hook_func () {
+	public function init_hook_func() {
 		self::load_translations();
 		$this->init_opts();
 
@@ -991,9 +991,6 @@ class Spam_BLIP_class {
 		$cl = __CLASS__; // for static methods callbacks
 
 		if ( $adm ) {
-			//$aa = array($cl, 'filter_admin_print_scripts');
-			//add_action('admin_print_scripts', $aa);
-	
 			// Settings/Options page setup
 			if ( current_user_can('manage_options') ) {
 				$this->init_settings_page();
