@@ -1,7 +1,13 @@
 K 25
 svn:wc:ra_dav:version-url
 V 39
-/!svn/ver/839194/spam-blip/trunk/locale
+/!svn/ver/897320/spam-blip/trunk/locale
+END
+spambl_l10n-en_US.po
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/!svn/ver/897320/spam-blip/trunk/locale/spambl_l10n-en_US.po
 END
 pot2en_US.sh
 K 25
@@ -20,10 +26,4 @@ K 25
 svn:wc:ra_dav:version-url
 V 55
 /!svn/ver/897320/spam-blip/trunk/locale/spambl_l10n.pot
-END
-spambl_l10n-en_US.po
-K 25
-svn:wc:ra_dav:version-url
-V 60
-/!svn/ver/897320/spam-blip/trunk/locale/spambl_l10n-en_US.po
 END

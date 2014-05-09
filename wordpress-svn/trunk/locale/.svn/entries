@@ -1,14 +1,14 @@
 10
 
 dir
-897318
+911049
 http://plugins.svn.wordpress.org/spam-blip/trunk/locale
 http://plugins.svn.wordpress.org
 
 
 
-2014-01-15T18:25:14.281142Z
-839194
+2014-04-18T12:58:21.274828Z
+897320
 EdHynan
 
 
@@ -25,6 +25,40 @@ EdHynan
 
 
 b8457f37-d9ea-0310-8a92-e5e31aec5664
+
+spambl_l10n-en_US.po
+file
+
+
+
+
+2014-04-18T12:51:01.000000Z
+1254840f6dd4ff51afa09f1008c26fc7
+2014-04-18T12:58:21.274828Z
+897320
+EdHynan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+55741
 
 pot2en_US.sh
 file
@@ -62,7 +96,7 @@ has-props
 
 spambl_l10n-en_US.mo
 file
-897320
+
 
 
 
@@ -96,7 +130,7 @@ has-props
 
 spambl_l10n.pot
 file
-897320
+
 
 
 
@@ -127,38 +161,4 @@ EdHynan
 
 
 34020
-
-spambl_l10n-en_US.po
-file
-897320
-
-
-
-2014-04-18T12:51:01.000000Z
-1254840f6dd4ff51afa09f1008c26fc7
-2014-04-18T12:58:21.274828Z
-897320
-EdHynan
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-55741
 
