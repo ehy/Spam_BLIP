@@ -4325,13 +4325,13 @@ EOQ;
 
 		$w = '' . ($tm - $hour);
 		$a = $this->db_FUNC('COUNT(*)',
-			"seenlast > {$w} AND ({$types})", false);
+			"seenlast > {$w} AND ({$types})", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'hour';
 			$r['hour'] = $a[0][0];
 		}
 		$a = $this->db_FUNC('COUNT(*)',
-			"seeninit > {$w} AND ({$types})", false);
+			"seeninit > {$w} AND ({$types})", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'hourinit';
 			$r['hourinit'] = $a[0][0];
@@ -4339,13 +4339,13 @@ EOQ;
 
 		$w = '' . ($tm - $day);
 		$a = $this->db_FUNC('COUNT(*)',
-			"seenlast > {$w} AND ({$types})", false);
+			"seenlast > {$w} AND ({$types})", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'day';
 			$r['day'] = $a[0][0];
 		}
 		$a = $this->db_FUNC('COUNT(*)',
-			"seeninit > {$w} AND ({$types})", false);
+			"seeninit > {$w} AND ({$types})", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'dayinit';
 			$r['dayinit'] = $a[0][0];
@@ -4353,47 +4353,51 @@ EOQ;
 
 		$w = '' . ($tm - $week);
 		$a = $this->db_FUNC('COUNT(*)',
-			"seenlast > {$w} AND ({$types})", false);
+			"seenlast > {$w} AND ({$types})", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'week';
 			$r['week'] = $a[0][0];
 		}
 		$a = $this->db_FUNC('COUNT(*)',
-			"seeninit > {$w} AND ({$types})", false);
+			"seeninit > {$w} AND ({$types})", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'weekinit';
 			$r['weekinit'] = $a[0][0];
 		}
 
-		$a = $this->db_FUNC("SUM(hitcount)", "{$types}", false);
+		$a = $this->db_FUNC("SUM(hitcount)", "{$types}", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'htotal';
 			$r['htotal'] = $a[0][0];
 		}
 
 		$w = 'white';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
+		$a = $this->db_FUNC('COUNT(*)',
+			"lasttype = '{$w}'", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'white';
 			$r['white'] = $a[0][0];
 		}
 		
 		$w = 'black';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
+		$a = $this->db_FUNC('COUNT(*)',
+			"lasttype = '{$w}'", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'black';
 			$r['black'] = $a[0][0];
 		}
 
 		$w = 'torx';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
+		$a = $this->db_FUNC('COUNT(*)',
+			"lasttype = '{$w}'", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'tor';
 			$r['tor'] = $a[0][0];
 		}
 		
 		$w = 'non';
-		$a = $this->db_FUNC('COUNT(*)', "lasttype = '{$w}'", false);
+		$a = $this->db_FUNC('COUNT(*)',
+			"lasttype = '{$w}'", null, false);
 		if ( $a !== false && is_array($a[0]) && (int)$a[0][0] > 0 ) {
 			$r['k'][] = 'non';
 			$r['non'] = $a[0][0];
