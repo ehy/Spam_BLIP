@@ -691,7 +691,8 @@ class Spam_BLIP_class {
 			$a = array();
 		}
 		// checkbox id will 'verbose_show-hide'
-		$a['verbose_show'] = __('Section introductions', 'spambl_l10n');
+		$a['verbose_show'] =
+			self::wt(__('Section introductions', 'spambl_l10n'));
 		return $a;
 	}
 
