@@ -1,7 +1,7 @@
 10
 
 dir
-911380
+911596
 http://plugins.svn.wordpress.org/spam-blip/tags/1.0.2/locale
 http://plugins.svn.wordpress.org
 
@@ -25,40 +25,6 @@ EdHynan
 
 
 b8457f37-d9ea-0310-8a92-e5e31aec5664
-
-pot2en_US.sh
-file
-
-
-
-
-2014-01-15T18:28:38.000000Z
-bd16a9400d05da6d98a7c30dc47c10ce
-2014-01-15T18:25:14.281142Z
-839194
-EdHynan
-has-props
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-3074
 
 spambl_l10n-en_US.mo
 file
@@ -161,4 +127,38 @@ EdHynan
 
 
 55237
+
+pot2en_US.sh
+file
+
+
+
+
+2014-01-15T18:28:38.000000Z
+bd16a9400d05da6d98a7c30dc47c10ce
+2014-01-15T18:25:14.281142Z
+839194
+EdHynan
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3074
 
