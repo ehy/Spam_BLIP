@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Spam BLIP
-Plugin URI: http://agalena.nfshost.com/b1/?page_id=211
+Plugin URI: http://agalena.nfshost.com/b1/spam-blip-stop-comment-spam-on-wordpress-sites
 Description: Stop comment spam before it is posted.
 Version: 1.0.5
 Author: Ed Hynan
@@ -129,7 +129,7 @@ class Spam_BLIP_class {
 	const DBG = false;
 	
 	// web page as of release
-	const plugin_webpage = 'http://agalena.nfshost.com/b1/?page_id=211';
+	const plugin_webpage = 'http://agalena.nfshost.com/b1/spam-blip-stop-comment-spam-on-wordpress-sites';
 	
 	// the widget class name
 	const Spam_BLIP_plugin_widget = 'Spam_BLIP_widget_class';
