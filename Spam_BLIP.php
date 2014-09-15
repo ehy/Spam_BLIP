@@ -4229,7 +4229,7 @@ EOQ;
 		// cache holds record that is changed, so clear it
 		$this->db_get_addr_cache = null;
 
-		// update get values in $r with those passsed in $a
+		// update get values in $r with those passed in $a
 		// leave address and seeninit alone
 		// compare lasttype, set varispam 1 if lasttype differs
 		if ( $r['lasttype'] !== $a['lasttype'] ) {
@@ -4458,22 +4458,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		
 		extract($args);
 
-		// get some options to show if true
-		$bc  = $this->plinst->get_comments_open_option();
-		$bp  = $this->plinst->get_pings_open_option();
-		$br  = $this->plinst->get_user_regi_option();
-		$tw  = $this->plinst->get_torwhite_option();
-		$bo  = $this->plinst->get_bailout_option();
-		$ce  = $this->plinst->get_chkexist_option();
-		$rn  = $this->plinst->get_rec_non_option();
-		$ps  = $this->plinst->get_rej_not_option();
-		$showopt = false;
-		if ( $bc != 'false' || $bp != 'false' || $br != 'false' ||
-			$tw != 'false' || $ps != 'false' ||
-			$bo != 'false' || $ce != 'false' || $rn != 'false' ) {
-			$showopt = true;
-		}
-
 		$ud  = $this->plinst->get_usedata_option();
 		$inf = false;
 		if ( $ud != 'false' && ($bc != 'false' || $bp != 'false') ) {
@@ -4490,9 +4474,30 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$cap = array_key_exists('caption', $instance)
 			? $instance['caption'] : false;
 
+		$showopt = array_key_exists('OPT', $instance)
+			? $instance['OPT'] : false;
+
 		$url = array_key_exists('URL', $instance)
 			? $instance['URL'] : false;
 
+		if ( $showopt == 'true' ) {
+			// get some options to show if true
+			$bc  = $this->plinst->get_comments_open_option();
+			$bp  = $this->plinst->get_pings_open_option();
+			$br  = $this->plinst->get_user_regi_option();
+			$tw  = $this->plinst->get_torwhite_option();
+			$bo  = $this->plinst->get_bailout_option();
+			$ce  = $this->plinst->get_chkexist_option();
+			$rn  = $this->plinst->get_rec_non_option();
+			$ps  = $this->plinst->get_rej_not_option();
+			$showopt = false;
+			if ( $bc != 'false' || $bp != 'false' || $br != 'false' ||
+				$tw != 'false' || $ps != 'false' ||
+				$bo != 'false' || $ce != 'false' || $rn != 'false' ) {
+				$showopt = true;
+			}
+		}
+	
 		echo $before_widget;
 
 		if ( $title ) {
@@ -4686,7 +4691,12 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 	public function update($new_instance, $old_instance) {
 		// form ctls: URL is checkbox
-		$i = array('title' => '', 'caption' => '', 'URL' => 'false');
+		$i = array(
+			'title' => '',
+			'caption' => '',
+			'OPT' => 'false',
+			'URL' => 'false'
+		);
 		
 		if ( is_array($old_instance) ) {
 			array_merge($i, $old_instance);
@@ -4709,6 +4719,9 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		if ( ! array_key_exists('title', $i) ) {
 			$i['title'] = '';
 		}
+		if ( ! array_key_exists('OPT', $i) || $i['OPT'] == '' ) {
+			$i['OPT'] = 'false';
+		}
 		if ( ! array_key_exists('URL', $i) || $i['URL'] == '' ) {
 			$i['URL'] = 'false';
 		}
@@ -4727,7 +4740,7 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 		$val = '';
 		if ( array_key_exists('title', $instance) ) {
-			$val = $wt($instance['title']);
+			$val = $ht($instance['title']);
 		}
 		$id = $this->get_field_id('title');
 		$nm = $this->get_field_name('title');
@@ -4737,27 +4750,44 @@ class Spam_BLIP_widget_class extends WP_Widget {
 
 		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
 		<input class="widefat" id="<?php echo $id; ?>"
+			style="overflow: auto;"
 			name="<?php echo $nm; ?>"
-			type="text" value="<?php echo $val; ?>" /></p>
+			type="text"
+			value="<?php echo $val; ?>" /></p>
 
 		<?php
-		$val = $wt($instance['caption']);
+		$val = $ht($instance['caption']);
 		$id = $this->get_field_id('caption');
 		$nm = $this->get_field_name('caption');
 		$tl = $wt(__('Caption:', 'spambl_l10n'));
 		?>
 		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
 		<input class="widefat" id="<?php echo $id; ?>"
+			style="overflow: auto;"
 			name="<?php echo $nm; ?>"
-			type="text" value="<?php echo $val; ?>" /></p>
+			type="text"
+			value="<?php echo $val; ?>" /></p>
 
 		<?php
-		// show URL checkbox
+		// show options checkbox
+		$val = $instance['OPT'];
+		$id = $this->get_field_id('OPT');
+		$nm = $this->get_field_name('OPT');
+		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
+		$tl = $wt(__('Show <em>Spam BLIP</em> options:&nbsp;', 'swfput_l10n'));
+		?>
+		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
+		<input class="widefat" id="<?php echo $id; ?>"
+			name="<?php echo $nm; ?>" style="width:16%;" type="checkbox"
+			value="<?php echo $val; ?>"<?php echo $ck; ?> /></p>
+
+		<?php
+		// show link checkbox
 		$val = $instance['URL'];
 		$id = $this->get_field_id('URL');
 		$nm = $this->get_field_name('URL');
 		$ck = $val == 'true' ? ' checked="checked"' : ''; $val = 'true';
-		$tl = $wt(__('Show <em>Spam BLIP</em> URL:&nbsp;', 'swfput_l10n'));
+		$tl = $wt(__('Show <em>Spam BLIP</em> link:&nbsp;', 'swfput_l10n'));
 		?>
 		<p><label for="<?php echo $id; ?>"><?php echo $tl; ?></label>
 		<input class="widefat" id="<?php echo $id; ?>"
