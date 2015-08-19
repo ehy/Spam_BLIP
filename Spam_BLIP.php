@@ -2244,7 +2244,41 @@ class Spam_BLIP_class {
 	// SEE calling code e.g., put_editrbl_opt($a), for $args
 	public function put_textarea_pair($args)
 	{
-		extract($args);
+		//extract($args);
+		// when this was 1st written WP core used extract() freely, but
+		// it is now a function non grata: one named concern is
+		// readability; obscure origin of vars seen in code, so readers:
+		// the array elements in the explicit extraction below will
+		// appear as variable names later.
+		foreach(array(
+			// textarea element attributes; esp., name
+			'txattl',
+			'txattr',
+			// textarea initial values
+			'txvall',
+			'txvalr',
+			// text area element labels
+			'ltxlb',
+			'rtxlb',
+			// option (map) names as textarea IDs
+			'ltxid',
+			'rtxid',
+			// incr for each, button IDs
+			'lbtid',
+			'rbtid',
+			// button labels
+			'lbttx',
+			'rbttx',
+			// incr for each, table element
+			'tableid',
+			// incr for each, debug span element
+			'dbg_span',
+			// JS control class name - a plugin class const
+			'classname',
+			// incr for each, up to 6, or add more in JS
+			'obj_key') as $k) {
+			$$k = isset($args[$k]) ? $args[$k] : '';
+		}
 	
 		$jsarg = sprintf('"%s","%s","%s","%s","%s"',
 			$ltxid, $rtxid, $lbtid, $rbtid, $dbg_span);
@@ -4464,7 +4498,20 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			return;
 		}
 		
-		extract($args);
+		//extract($args);
+		// when this was 1st written WP core used extract() freely, but
+		// it is now a function non grata: one named concern is
+		// readability; obscure origin of vars seen in code, so readers:
+		// the array elements in the explicit extraction below will
+		// appear as variable names later.
+		foreach(array(
+			'before_widget',
+			'after_widget',
+			'before_title',
+			'after_title') as $k) {
+			$$k = isset($args[$k]) ? $args[$k] : '';
+		}
+	
 
 		$ud  = $this->plinst->get_usedata_option();
 		$bc  = $this->plinst->get_comments_open_option();

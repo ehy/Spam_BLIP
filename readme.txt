@@ -3,7 +3,7 @@ Contributors: EdHynan
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick%DONATE_LINK%hosted_button_id=4Q2Y8ZUG8HXLC
 Tags: anti-spam, comment spam, spam comments, blog spam, blog, comment, comments, content, links, network, plugin, post, Post, posts, security, spam, wordpress
 Requires at least: 3.0.2
-Tested up to: 4.2
+Tested up to: 4.3
 Stable tag: 1.0.6
 Text Domain: spambl_l10n
 License: GPLv3 or later
@@ -115,7 +115,9 @@ Think 'BLacklist IP'.
 == Changelog ==
 
 = 1.0.6 =
+* Check with WordPress 4.3.
 * Fix URL preparation bug in plugin_page_addlink().
+* Remove uses of PHP extract().
 
 = 1.0.5.1 =
 * Fix bug in widget introduced in 1.0.5.
@@ -170,7 +172,9 @@ Think 'BLacklist IP'.
 == Upgrade Notice ==
 
 = 1.0.6 =
+* Check with WordPress 4.3.
 * Fix URL preparation bug in plugin_page_addlink().
+* Remove uses of PHP extract().
 
 = 1.0.5.1 =
 * Fix bug in widget introduced in 1.0.5.
