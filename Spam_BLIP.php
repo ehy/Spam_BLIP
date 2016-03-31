@@ -3,7 +3,7 @@
 Plugin Name: Spam BLIP
 Plugin URI: //agalena.nfshost.com/b1/software/spam-blip-wordpress-comment-spam-plugin/
 Description: Stop comment spam before it is posted.
-Version: 1.0.6
+Version: 1.0.7
 Author: Ed Hynan
 Author URI: //agalena.nfshost.com/b1/
 License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
@@ -130,6 +130,9 @@ class Spam_BLIP_class {
 	
 	// web page as of release
 	const plugin_webpage = '//agalena.nfshost.com/b1/software/spam-blip-wordpress-comment-spam-plugin/';
+	
+	// this version
+	const plugin_version = '1.0.7';
 	
 	// the widget class name
 	const Spam_BLIP_plugin_widget = 'Spam_BLIP_widget_class';
@@ -4481,7 +4484,11 @@ class Spam_BLIP_widget_class extends WP_Widget {
 		$lb =  __('Spam BLIP', 'spambl_l10n');
 		// Description shown under label shown on widgets page
 		$desc = __('Display comment and ping spam hit information, and database table row count', 'spambl_l10n');
-		$opts = array('classname' => $cl, 'description' => $desc);
+		$opts = array(
+			'classname' => $cl,
+			'description' => $desc,
+			'customize_selective_refresh' => true
+		);
 
 		// control opts width affects the parameters form,
 		// height is ignored.  Width 400 allows long text fields

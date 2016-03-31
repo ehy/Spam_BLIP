@@ -1,7 +1,7 @@
 #! /usr/bin/make -f
 # License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
 
-PRJVERS = 1.0.6
+PRJVERS = 1.0.7
 PRJSTEM = Spam_BLIP
 PRJNAME = $(PRJSTEM)-$(PRJVERS)
 
@@ -63,6 +63,8 @@ ${PRJZIP}: ${JSBIN} ${ZALL} ${LCFPO}
 # is new here (Ubuntu GNU/Linux)
 ${JSBIN}: ${JSSRC}
 	O=$@; I=$${O%%.*}.js; \
+	(R=`which ruby` && $$R -e "require 'uglifier'; printf '%s', Uglifier.compile(open('""$$I""', 'r'))" > "$$O" 2>/dev/null ) \
+	|| \
 	(P=`which perl` && $$P -e 'use JavaScript::Minifier::XS qw(minify); print minify(join("",<>))' < "$$I" > "$$O" 2>/dev/null ) \
 	|| \
 	(P=`which perl` && $$P -e 'use JavaScript::Minifier qw(minify);minify(input=>*STDIN,outfile=>*STDOUT)' < "$$I" > "$$O" 2>/dev/null) \

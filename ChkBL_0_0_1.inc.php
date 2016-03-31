@@ -57,29 +57,23 @@ class ChkBL_0_0_1 {
 	// misleadingly small over an insignificant amount of time;
 	// it is what it is.
 	protected static $defdom = array(
-		// list.blogspambl.com has example code that only tests
-		// for 127., but seems to always return 127.0.0.2
-		// http://blogspambl.com/
-		array('list.blogspambl.com', '127.0.0.2', '1, I; 2 ,I; 3 ,I;'),
-		// only 127.0.0.2 known
-		// http://spam-champuru.livedoor.com/dnsbl/
-		array('dnsbl.spam-champuru.livedoor.com', '127.0.0.2', null),
 		// only 127.0.0.1 known (Note: *not* *.2)
 		// Quote from URL below: ``You may use this RBL list
 		// free of charge, currently without limit and I intend
 		// to keep it that way.''
 		// http://www.usenix.org.uk/content/rbl.html
-		// Update 06-2014: looks like s5h has changes to using
+		// Update 06-2014: looks like s5h has changed to using
 		// 127.0.0.2, although web page says nothing (at all
 		// about returns) -- so, change to 127.0.0.3 and use
 		// the '&' op.
 		array('all.s5h.net', '127.0.0.3', '3,&'),
-		// has been tried, but at end of list, therefore not
-		// really evaluated -- but, has given hits
-		// http://bbq.uso800.net/code.html
-		// Update 2013/12/27: has had enough testing that I think
-		// it should be in the default array
-		array('niku.2ch.net', '127.0.0.2', null)
+		// list.blogspambl.com has example code that only tests
+		// for 127., but seems to always return 127.0.0.2
+		// http://blogspambl.com/
+		array('list.blogspambl.com', '127.0.0.2', '1, I; 2 ,I; 3 ,I;'),
+		// only 127.0.0.2 known
+		// http://bsb.empty.us/ OR http://bsb.spamlookup.net/
+		array('bsb.empty.us', '127.0.0.2', null),
 	);
 
 	// as above, but found to be very 'strict', i.e.,
@@ -116,13 +110,20 @@ class ChkBL_0_0_1 {
 	protected static $otherdom = array(
 		// only 127.0.0.2 known
 		// http://bsb.empty.us/ OR http://bsb.spamlookup.net/
-		array('bsb.empty.us', '127.0.0.2', null),
+		//array('bsb.empty.us', '127.0.0.2', null),
 		// has been tried, but at end of list, therefore not
 		// really evaluated -- but, has given hits
 		// http://bbq.uso800.net/code.html
 		// Update 2013/12/27: has had enough testing that I think
 		// it should be in the default array
+		// Update 2016/03/31: possibly defunct
 		//array('niku.2ch.net', '127.0.0.2', null)
+		// 2016/03/31 -- not sure what's up with 
+		// spam-champuru.livedoor.com -- not hits in a long time, and
+		// http://blog.livedoor.com/ seems to be a food thing.
+		// only 127.0.0.2 known
+		// http://spam-champuru.livedoor.com/dnsbl/
+		array('dnsbl.spam-champuru.livedoor.com', '127.0.0.2', null),
 	);
 
 	protected $doms;      // from ctor arg, or ref to $defdom, or merge
