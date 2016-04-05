@@ -1,6 +1,6 @@
 <?php
 /*
- * BLCheckResult.php
+ * BLCheckResult.inc.php
  * 
  * Copyright 2016 Ed Hynan <edhynan@gmail.com>
  * 
@@ -25,7 +25,7 @@
 
 /**********************************************************************\
  * A structure to hold results of address check -- all public for     *
- * easy access, as in a C  struct.                                    *
+ * easy access, as in a C struct.                                     *
  *                                                                    *
  * This would have been preferable as a class nested within the using *
  * class, but that cannot be done in PHP presently.                   *
@@ -33,14 +33,23 @@
 
 class BLCheckResult {
 	// help detect class name conflicts; called by using code
-	// const evh_opt_id = 0xED00AA33; // N.G. < 5.3
-	private static $evh_opt_id = 0xED00AA33;
+	const evh_opt_id = 0xED00AA33;
 	public static function id_token () {
-		return self::$evh_opt_id;
+		return self::evh_opt_id;
 	}
 
-	public $group;        // option group unique key (string)
+	// type of hit producing this result: null until initialized,
+	// false for non-hit, else descriptive short string
+	public $type;			// (null, false, string)
+
+	// data per result type
+	public $dat;			// (null, variable)
 	
-};
+	// ctor
+	public function __construct() {
+		$this->type = null;
+		$this->dat = null;
+	}
+}
 
 ?>

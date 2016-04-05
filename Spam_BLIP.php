@@ -124,7 +124,7 @@ endif;
  * };', thank you.)
  */
 if ( ! class_exists('Spam_BLIP_class') ) :
-require_once "BLCheckResult.php";
+spamblip_paranoid_require_class("BLCheckResult");
 
 class Spam_BLIP_class {
 	// for debugging: set false for release
@@ -282,13 +282,9 @@ class Spam_BLIP_class {
 	protected $ipchk = null;
 	protected $ipchk_done = false;
 
-	// array of rbl lookup result is put here for reference
-	// across callback methods; or set with result from
-	// data store lookup as array(true||false)
-	protected $rbl_result;
-	// set array(true||false) when a data store lookup has been done
-	// but not rbl
-	protected $dbl_result;
+	// rbl lookup result is put here for reference
+	// across callback methods; instance of class BLCheckResult
+	protected $the_result;
 
 	// if true do data store maintenance in shutdown hook
 	protected $do_db_maintain;
@@ -326,8 +322,7 @@ class Spam_BLIP_class {
 		$t = self::settings_jsdir . '/' . self::settings_jsname;
 		$this->settings_js = plugins_url($t, $pf);
 		
-		$this->rbl_result = false;
-		$this->dbl_result = false;
+		$this->the_result = new BLCheckResult();
 		$this->do_db_maintain = false;
 		$this->ipchk = new IPReservedCheck_0_0_1();
 		
@@ -2943,24 +2938,15 @@ class Spam_BLIP_class {
 		}
 		
 		$ret = false;
-		// The simple check is not needed here
-		if ( true ) {
-			$this->rbl_result = $this->chkbl->check_all($addr, 1);
-			if ( ! empty($this->rbl_result) ) {
-				$ret = $this->rbl_result[0][2];
-			} else {
-				// place false in empty array
-				$this->rbl_result[] = false;
-			}
-		} else {
-			// in ctor $rbl_result is assigned false, so if
-			// other code finds it false, this code has not
-			// been reached
-			$this->rbl_result = array();
-			$ret = $this->chkbl->check_simple($addr);
 
-			// simple case: put result in [0]
-			$this->rbl_result[] = $ret;
+		$result = $this->chkbl->check_all($addr, 1);
+		if ( ! empty($result) ) {
+			$this->the_result->type = "DNSBL";
+			$this->the_result->dat  = $result;
+			$ret = $result[0][2];
+		} else {
+			// place false in empty array
+			$this->the_result->type = false;
 		}
 		
 		return $ret;
@@ -2970,23 +2956,16 @@ class Spam_BLIP_class {
 	// null if no previous result, else the
 	// boolean result (true||false)
 	public function get_rbl_result() {
-		if ( ! is_array($this->rbl_result) ) {
+		if ( $this->the_result->type === null ) {
 			return null;
 		}
-		if ( is_array($this->rbl_result[0]) ) {
-			return $this->rbl_result[0][2];
+		if ( $this->the_result->type === false ) {
+			return false;
 		}
-		return $this->rbl_result[0];
-	}
-
-	// helper: get internal, non-BL result, return:
-	// null if no previous result, else the
-	// boolean result (true||false)
-	public function get_dbl_result() {
-		if ( ! is_array($this->dbl_result) ) {
-			return null;
+		if ( is_array($this->the_result->dat[0]) ) {
+			return $this->the_result->dat[0][2];
 		}
-		return $this->dbl_result[0];
+		return $this->the_result->dat[0];
 	}
 
 	// anything scheduled for just before PHP shutdow: WP
@@ -3225,9 +3204,7 @@ class Spam_BLIP_class {
 		// whitelisting those
 		if ( $this->chk_user_whitelist($addr, $statype, $pretime) ) {
 			// set the result; checked in various places
-			$this->rbl_result = array(false);
-			// flag this like db check w a hit
-			$this->dbl_result = array(false);
+			$this->the_result->type = "WHITELIST";
 			return $def;
 		}
 
@@ -3236,12 +3213,16 @@ class Spam_BLIP_class {
 		// optional check in user blacklist
 		if ( ! $ret &&
 			$this->chk_user_blacklist($addr, $statype, $pretime) ) {
+			// set the result; checked in various places
+			$this->the_result->type = "BLACKLIST";
 			$ret = true;
 		}
 
 		// optional check in WP stored comments
 		if ( ! $ret &&
 			$this->chk_comments($addr, $statype, (int)$pretime) ) {
+			// set the result; checked in various places
+			$this->the_result->type = "COMMENTS";
 			$ret = true;
 		}
 
@@ -3255,28 +3236,25 @@ class Spam_BLIP_class {
 		if ( ! $ret &&
 			$this->tor_nonhit_opt_whitelist($addr, $rbl) ) {
 			// set the result; checked in various places
-			$this->rbl_result = array(false);
-			// flag this like db check w/o a hit
-			$this->dbl_result = array(false);
+			$this->the_result->type = "TOREXIT";
 			return $def;
 		}
 		
 		// optional data store check
 		if ( ! $ret &&
 			$this->chk_db_4_hit($addr, $statype, $pretime) ) {
+			$this->the_result->type = "HITSDB";
 			$ret = true;
 		}
 
 		// got hit above?
 		if ( $ret ) {
-			// set the result; checked in various places
-			$this->rbl_result = array(true);
-			// flag this like db check w a hit
-			$this->dbl_result = array(true);
 			// optionally die
 			self::hit_optional_bailout($addr, $statype);
 			// Just say NO! (to Nancy)
 			return false;
+		} else {
+			$this->the_result->type = false;
 		}
 
 		// Check for not non-routable CGI/1.1 envar REMOTE_ADDR
@@ -3300,16 +3278,13 @@ class Spam_BLIP_class {
 				// TODO: email admin (well, probably not)
 				$this->handle_REMOTE_ADDR_error($ret);
 			}
-			// can't continue; set result false
-			$this->rbl_result = array(false);
-			$this->dbl_result = array(false);
+			// can't continue; leave result false
 			return $def;
 		}
 
 		// if $rbl not true, only the checks above are
 		// wanted, for calls that should not wait on DNS
 		if ( $rbl !== true ) {
-			$this->dbl_result = array(false);
 			return $def;
 		}
 
@@ -3357,7 +3332,8 @@ class Spam_BLIP_class {
 			$dtxt = $statype === 'pings' ? $ptxt :
 				($statype === 'comments' ? $ctxt : $statype);
 
-			if ( is_array($this->rbl_result[0]) ) {
+			$rdat = $this->the_result->dat;
+			if ( is_array($rdat[0]) ) {
 				$doms = $this->chkbl->get_dom_array();
 				$fmt =
 					// TRANSLATORS: %1$s is type "comments" or "pings"
@@ -3367,8 +3343,8 @@ class Spam_BLIP_class {
 					// %5$f is lookup time in seconds (float)
 					__('%1$s denied for address %2$s, list at "%3$s", result %4$s in %5$f', 'spambl_l10n');
 				$fmt = sprintf($fmt, $dtxt, $addr,
-					$doms[ $this->rbl_result[0][0] ][0],
-					$this->rbl_result[0][1], $difftime);
+					$doms[ $rdat[0][0] ][0],
+					$rdat[0][1], $difftime);
 				self::errlog($fmt);
 			} else {
 				$fmt =
