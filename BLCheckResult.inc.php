@@ -23,15 +23,23 @@
 /* text editor: use real tabs of 4 column width, LF line ends */
 /* human coder: keep line length <= 72 columns; break at params */
 
-/**
- * A structure to hold results of address check -- all public for
- * easy access, as in a C  struct.
- * 
- * This would have been preferable as a class nested within the using
- * class, but that cannot be done in PHP presently.
- */
+/**********************************************************************\
+ * A structure to hold results of address check -- all public for     *
+ * easy access, as in a C  struct.                                    *
+ *                                                                    *
+ * This would have been preferable as a class nested within the using *
+ * class, but that cannot be done in PHP presently.                   *
+\**********************************************************************/
 
 class BLCheckResult {
+	// help detect class name conflicts; called by using code
+	// const evh_opt_id = 0xED00AA33; // N.G. < 5.3
+	private static $evh_opt_id = 0xED00AA33;
+	public static function id_token () {
+		return self::$evh_opt_id;
+	}
+
+	public $group;        // option group unique key (string)
 	
 };
 

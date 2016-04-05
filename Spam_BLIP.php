@@ -124,6 +124,8 @@ endif;
  * };', thank you.)
  */
 if ( ! class_exists('Spam_BLIP_class') ) :
+require_once "BLCheckResult.php";
+
 class Spam_BLIP_class {
 	// for debugging: set false for release
 	const DBG = false;
