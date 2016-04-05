@@ -10,6 +10,7 @@ COPYRIGHT_YEAR   = 2013
 TRANS_BUGS_EMAIL = edhynan@gmail.com
 
 SRCS = ${PRJSTEM}.php \
+	BLCheckResult.php \
 	Options_0_0_2b.inc.php \
 	OptField_0_0_2b.inc.php \
 	OptSection_0_0_2b.inc.php \

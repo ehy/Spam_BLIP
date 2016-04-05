@@ -147,10 +147,10 @@ class Spam_BLIP_class {
 	const optverbose = 'verbose';
 	// this is hidden in settings page; used w/ JS for 'screen options'
 	const optscreen1 = 'screen_opts_1';
-	// filter comments_open?
-	const optcommflt = 'commflt';
-	// filter pings_open?
-	const optpingflt = 'pingflt';
+	//// filter comments_open?
+	//const optcommflt = 'commflt';
+	//// filter pings_open?
+	//const optpingflt = 'pingflt';
 	// filter new user registration (optionally required to comment)?
 	const optregiflt = 'regiflt';
 	// pass, or 'whitelist', TOR exit nodes?
@@ -380,8 +380,8 @@ class Spam_BLIP_class {
 			return array(
 				self::optverbose => self::defverbose,
 				self::optscreen1 => self::defscreen1,
-				self::optcommflt => self::defcommflt,
-				self::optpingflt => self::defpingflt,
+				//self::optcommflt => self::defcommflt,
+				//self::optpingflt => self::defpingflt,
 				self::optregiflt => self::defregiflt,
 				self::opttorpass => self::deftorpass,
 				self::optnonhrec => self::defnonhrec,
@@ -401,8 +401,8 @@ class Spam_BLIP_class {
 		return array(
 			self::optverbose => self::defverbose,
 			self::optscreen1 => self::defscreen1,
-			self::optcommflt => self::defcommflt,
-			self::optpingflt => self::defpingflt,
+			//self::optcommflt => self::defcommflt,
+			//self::optpingflt => self::defpingflt,
 			self::optregiflt => self::defregiflt,
 			self::opttorpass => self::deftorpass,
 			self::optnonhrec => self::defnonhrec,
@@ -488,16 +488,16 @@ class Spam_BLIP_class {
 				self::optverbose,
 				$items[self::optverbose],
 				array($this, 'put_verbose_opt'));
-		$fields[$nf++] = new $Cf(self::optcommflt,
-				self::wt(__('Blacklist check for comments:', 'spambl_l10n')),
-				self::optcommflt,
-				$items[self::optcommflt],
-				array($this, 'put_comments_opt'));
-		$fields[$nf++] = new $Cf(self::optpingflt,
-				self::wt(__('Blacklist check for pings:', 'spambl_l10n')),
-				self::optpingflt,
-				$items[self::optpingflt],
-				array($this, 'put_pings_opt'));
+		//$fields[$nf++] = new $Cf(self::optcommflt,
+		//		self::wt(__('Blacklist check for comments:', 'spambl_l10n')),
+		//		self::optcommflt,
+		//		$items[self::optcommflt],
+		//		array($this, 'put_comments_opt'));
+		//$fields[$nf++] = new $Cf(self::optpingflt,
+		//		self::wt(__('Blacklist check for pings:', 'spambl_l10n')),
+		//		self::optpingflt,
+		//		$items[self::optpingflt],
+		//		array($this, 'put_pings_opt'));
 		$fields[$nf++] = new $Cf(self::optregiflt,
 				self::wt(__('Blacklist check user registrations:', 'spambl_l10n')),
 				self::optregiflt,
@@ -1029,19 +1029,17 @@ class Spam_BLIP_class {
 			$aa = array($this, 'action_pre_comment_on_post');
 			add_action('pre_comment_on_post', $aa, 100);
 	
-			$aa = array($this, 'action_comment_closed');
-			add_action('comment_closed', $aa, 100);
-	
-			$aa = array($this, 'filter_comments_open');
-			add_filter('comments_open', $aa, 100);
-	
-			$aa = array($this, 'filter_pings_open');
-			add_filter('pings_open', $aa, 100);
-	
+			//// these will prevent page load
+			//if ( false ) {
+			//	$aa = array($this, 'filter_comments_open');
+			//	add_filter('comments_open', $aa, 100);
+		    //
+			//	$aa = array($this, 'filter_pings_open');
+			//	add_filter('pings_open', $aa, 100);
+			//}
+
 			// optional check on new registrations
 			if ( self::check_filter_user_regi() ) {
-				$aa = array($this, 'filter_user_regi');
-				add_filter('register', $aa, 100);
 				$aa = array($this, 'action_user_regi');
 				add_action('login_form_register', $aa, 100);
 			}
@@ -1666,8 +1664,8 @@ class Spam_BLIP_class {
 					$a_out[$k] = ($ot == 'false') ? 'false' : 'true';
 					break;
 				case self::optverbose:
-				case self::optcommflt:
-				case self::optpingflt:
+				//case self::optcommflt:
+				//case self::optpingflt:
 				case self::optregiflt:
 				case self::opttorpass:
 				case self::optnonhrec:
@@ -2341,19 +2339,19 @@ class Spam_BLIP_class {
 		);
 	}
 
-	// callback, rbl filter comments?
-	public function put_comments_opt($a) {
-		$tt = self::wt(__('Check blacklist for comments', 'spambl_l10n'));
-		$k = self::optcommflt;
-		$this->put_single_checkbox($a, $k, $tt);
-	}
-
-	// callback, rbl filter pings?
-	public function put_pings_opt($a) {
-		$tt = self::wt(__('Check blacklist for pings', 'spambl_l10n'));
-		$k = self::optpingflt;
-		$this->put_single_checkbox($a, $k, $tt);
-	}
+	//// callback, rbl filter comments?
+	//public function put_comments_opt($a) {
+	//	$tt = self::wt(__('Check blacklist for comments', 'spambl_l10n'));
+	//	$k = self::optcommflt;
+	//	$this->put_single_checkbox($a, $k, $tt);
+	//}
+    //
+	//// callback, rbl filter pings?
+	//public function put_pings_opt($a) {
+	//	$tt = self::wt(__('Check blacklist for pings', 'spambl_l10n'));
+	//	$k = self::optpingflt;
+	//	$this->put_single_checkbox($a, $k, $tt);
+	//}
 
 	// callback, rbl filter user registration?
 	public function put_regi_opt($a) {
@@ -2858,15 +2856,15 @@ class Spam_BLIP_class {
 		return self::opt_by_name(self::optmaxdata);
 	}
 
-	// should the filter_comments_open() rbl check be done
-	public static function get_comments_open_option() {
-		return self::opt_by_name(self::optcommflt);
-	}
-
-	// should the filter_pings_open() rbl check be done
-	public static function get_pings_open_option() {
-		return self::opt_by_name(self::optpingflt);
-	}
+	//// should the filter_comments_open() rbl check be done
+	//public static function get_comments_open_option() {
+	//	return self::opt_by_name(self::optcommflt);
+	//}
+    //
+	//// should the filter_pings_open() rbl check be done
+	//public static function get_pings_open_option() {
+	//	return self::opt_by_name(self::optpingflt);
+	//}
 
 	// should the action_user_regi() rbl check be done
 	public static function get_user_regi_option() {
@@ -2958,10 +2956,7 @@ class Spam_BLIP_class {
 			// been reached
 			$this->rbl_result = array();
 			$ret = $this->chkbl->check_simple($addr);
-			// DEVEL: remove
-			if ( false && $addr === '192.168.1.187' ) {
-				$ret = true;
-			}
+
 			// simple case: put result in [0]
 			$this->rbl_result[] = $ret;
 		}
@@ -3033,11 +3028,10 @@ class Spam_BLIP_class {
 	// an exit (after an action hook call), so spam should
 	// not get through in those cases.
 	public function action_pre_comment_on_post($comment_post_ID) {
-		if ( self::get_comments_open_option() != 'true' ) {
-			return;
-		}		
-
-		self::dbglog('enter ' . __FUNCTION__);
+		self::dbglog("enter method '" . __FUNCTION__ . "'");
+		//if ( self::get_comments_open_option() != 'true' ) {
+		//	return;
+		//}		
 
 		// was rbl check called already? if so,
 		// use stored result
@@ -3097,33 +3091,12 @@ class Spam_BLIP_class {
 		//}
 	//}
 
-	// add_action('comment_closed', $scf, 1);
-	// This gets called if comments_open(), filtered below,
-	// yields not true. The block ends with wp_die(), so it is
-	// not needed here, and would exclude subsequent hooks if
-	// done here. An additional message might be printed, even
-	// though there's not much point to it
-	public function action_comment_closed($comment_post_ID) {
-		if ( self::get_comments_open_option() != 'true' ) {
-			return;
-		}
-		
-		if ( self::get_rej_not_option() == 'true' ) {
-			return;
-		}
-		
-		if ( $this->get_dbl_result() === true ) {
-			// TRANSLATORS: polite rejection message
-			// in response to blacklisted IP address
-			echo __('Sorry, but no, thank you.', 'spambl_l10n') .'<hr>';
-		}
-	}
-
 	// add_action('login_form_' . 'register', $scf, 1) -- wp-login.php;
 	// This gets called if on new user registration, and a site
 	// may optionally require registration to comment, so this is
 	// pertinent to comment spam.
 	public function action_user_regi() {
+		self::dbglog("enter method '" . __FUNCTION__ . "'");
 		if ( self::get_user_regi_option() != 'true' ) {
 			return;
 		}
@@ -3157,121 +3130,76 @@ class Spam_BLIP_class {
 		}
 	}
 
-	// add_filter('register', $scf, 1);
-	// NOTE: called for each register-link that may display.
-	// This should not be used for the DNS RBL lookup because
-	// waiting for the response can caused a noticeable stall
-	// of page loading in client.
-	// action_user_regi is used for the RBL lookup;
-	// see comment there.
-	// OTOH, this filter will look in the hit db, which is fast,
-	// and nip it in the bud early if a hit is found.
-	public function filter_user_regi($link) {
-		if ( self::get_user_regi_option() != 'true' ) {
-			return $link;
-		}
-
-		if ( ! self::check_filter_user_regi() ) {
-			return $link;
-		}
-
-		self::dbglog('enter ' . __FUNCTION__);
-
-		// was rbl check called already? if so,
-		// use stored result
-		$prev = $this->get_dbl_result();
-		
-		// if not done already
-		if ( $prev === null ) {
-			// false limits check: no DNS
-			$this->do_db_bl_check(true, 'comments', false) ;
-			$prev = $this->get_dbl_result();
-		}
-		
-		// if already done, but not a hit
-		if (  $prev === false ) {
-			return $link;
-		}
-
-		// already got a hit on this IP addr
-		// DO NOT be put alternate content in $link: the caller
-		// prepends and appends elements such as '<li>', and replacing
-		// those might have unpleasant results -- OTOH, the caller
-		// also conditionally uses the empty string, so it may
-		// be considered an appropriate return
-		if ( self::get_rej_not_option() == 'true' ) {
-			self::dbglog('no-reject option, in ' . __FUNCTION__);
-			return $link;
-		}		
-		$link = '';
-		return $link;
-	}
-
-	// add_filter('comments_open', $scf, 1);
-	// NOTE: this may/will be called many times per page,
-	// for each comment link on page.
-	// This should not be used for the DNS RBL lookup because
-	// waiting for the response can caused a noticeable stall
-	// of page loading in client.
-	// action_pre_comment_on_post is used for the RBL lookup;
-	// see comment there.
-	// OTOH, this filter will look in the hit db, which is fast,
-	// and nip it in the bud early if a hit is found.
-	public function filter_comments_open($open) {
-		if ( self::get_comments_open_option() != 'true' ) {
-			return $open;
-		}		
-
-		// was data store check called already? if so,
-		// use stored result
-		$prev = $this->get_dbl_result();
-		
-		// if not done already
-		if ( $prev === null ) {
-			// false limits check: no DNS
-			return $this->do_db_bl_check($open, 'comments', false);
-		}
-		
-		// if already done, but not a hit
-		if (  $prev === false ) {
-			return $open;
-		}
-
-		// already got a hit on this IP addr		
-		if ( self::get_rej_not_option() == 'true' ) {
-			self::dbglog('no-reject option, in ' . __FUNCTION__);
-			return $open;
-		}		
-		return false;
-	}
-
-	// add_filter('pings_open', $scf, 1);
-	public function filter_pings_open($open) {
-		if ( self::get_pings_open_option() != 'true' ) {
-			return $open;
-		}		
-
-		// was rbl check called already? if so,
-		// use stored result
-		$prev = $this->get_rbl_result();
-		
-		// if not done already
-		if ( $prev === null ) {
-			return $this->do_db_bl_check($open, 'pings');
-		}
-		
-		// if already done, but not a hit
-		if ( $prev === false ) {
-			return $open;
-		}
-
-		// already got a hit on this IP addr		
-		if ( self::get_rej_not_option() == 'true' ) {
-			self::dbglog('no-reject option, in ' . __FUNCTION__);
-			return $open;
-		}		
-		return false;
-	}
+	//// add_filter('comments_open', $scf, 1);
+	//// NOTE: this may/will be called many times per page,
+	//// for each comment link on page.
+	//// This should not be used for the DNS RBL lookup because
+	//// waiting for the response can caused a noticeable stall
+	//// of page loading in client.
+	//// action_pre_comment_on_post is used for the RBL lookup;
+	//// see comment there.
+	//// OTOH, this filter will look in the hit db, which is fast,
+	//// and nip it in the bud early if a hit is found.
+	//public function filter_comments_open($open) {
+	//	self::dbglog("enter method '" . __FUNCTION__ . "'");
+	//	if ( self::get_comments_open_option() != 'true' ) {
+	//		return $open;
+	//	}		
+    //
+	//	// was data store check called already? if so,
+	//	// use stored result
+	//	$prev = $this->get_dbl_result();
+	//	
+	//	// if not done already
+	//	if ( $prev === null ) {
+	//		// false limits check: no DNS
+	//		return $this->do_db_bl_check($open, 'comments', false);
+	//	}
+	//	
+	//	// if already done, but not a hit
+	//	if (  $prev === false ) {
+	//		return $open;
+	//	}
+    //
+	//	// already got a hit on this IP addr		
+	//	if ( self::get_rej_not_option() == 'true' ) {
+	//		self::dbglog('no-reject option, in ' . __FUNCTION__);
+	//		return $open;
+	//	}		
+	//	return false;
+	//}
+    //
+	//// add_filter('pings_open', $scf, 1);
+	//// This should not be used for the DNS RBL lookup because
+	//// waiting for the response can caused a noticeable stall
+	//// of page loading in client.
+	//public function filter_pings_open($open) {
+	//	self::dbglog("enter method '" . __FUNCTION__ . "'");
+	//	if ( self::get_pings_open_option() != 'true' ) {
+	//		return $open;
+	//	}		
+    //
+	//	// was rbl check called already? if so,
+	//	// use stored result
+	//	$prev = $this->get_rbl_result();
+	//	
+	//	// if not done already
+	//	if ( $prev === null ) {
+	//		return $this->do_db_bl_check($open, 'pings', false);
+	//	}
+	//	
+	//	// if already done, but not a hit
+	//	if ( $prev === false ) {
+	//		return $open;
+	//	}
+    //
+	//	// already got a hit on this IP addr		
+	//	if ( self::get_rej_not_option() == 'true' ) {
+	//		self::dbglog('no-reject option, in ' . __FUNCTION__);
+	//		return $open;
+	//	}		
+	//	return false;
+	//}
 
 	// internal BL check for use by e.g., filters
 	// Returns false for a BL hit, else returns arg $def
@@ -3297,33 +3225,6 @@ class Spam_BLIP_class {
 			// set the result; checked in various places
 			$this->rbl_result = array(false);
 			// flag this like db check w a hit
-			$this->dbl_result = array(false);
-			return $def;
-		}
-
-		// Check for not non-routable CGI/1.1 envar REMOTE_ADDR
-		// as can actually happen with some hosting hacks.
-		$ret = $this->ipchk_done ? false
-			: $this->ipchk->chk_resv_addr($addr);
-		$this->ipchk_done = true;
-		if ( $ret !== false ) {
-			if ( self::get_ip_log_option() != 'false' ) {
-				// TRANSLATORS: word for ietf/iana reserved network
-				$rsz = __('RESERVED', 'spambl_l10n');
-				// TRANSLATORS: word for ietf/iana loopback network
-				$lpb = __('LOOPBACK', 'spambl_l10n');
-				$ret = $ret ? $rsz : $lpb;
-				// TRANSLATORS: %1$s is either "RESERVED" or "LOOPBACK";
-				// see comments above.
-				// %2$s is an IPv4 dotted quad address
-				$fmt = __('Got %1$s IPv4 address "%2$s" in "REMOTE_ADDR".', 'spambl_l10n');
-				$ret = sprintf($fmt, $ret, $addr);
-				self::errlog($ret);
-				// TODO: email admin (well, probably not)
-				$this->handle_REMOTE_ADDR_error($ret);
-			}
-			// can't continue; set result false
-			$this->rbl_result = array(false);
 			$this->dbl_result = array(false);
 			return $def;
 		}
@@ -3374,6 +3275,33 @@ class Spam_BLIP_class {
 			self::hit_optional_bailout($addr, $statype);
 			// Just say NO! (to Nancy)
 			return false;
+		}
+
+		// Check for not non-routable CGI/1.1 envar REMOTE_ADDR
+		// as can actually happen with some hosting hacks.
+		$ret = $this->ipchk_done ? false
+			: $this->ipchk->chk_resv_addr($addr);
+		$this->ipchk_done = true;
+		if ( $ret !== false ) {
+			if ( self::get_ip_log_option() != 'false' ) {
+				// TRANSLATORS: word for ietf/iana reserved network
+				$rsz = __('RESERVED', 'spambl_l10n');
+				// TRANSLATORS: word for ietf/iana loopback network
+				$lpb = __('LOOPBACK', 'spambl_l10n');
+				$ret = $ret ? $rsz : $lpb;
+				// TRANSLATORS: %1$s is either "RESERVED" or "LOOPBACK";
+				// see comments above.
+				// %2$s is an IPv4 dotted quad address
+				$fmt = __('Got %1$s IPv4 address "%2$s" in "REMOTE_ADDR".', 'spambl_l10n');
+				$ret = sprintf($fmt, $ret, $addr);
+				self::errlog($ret);
+				// TODO: email admin (well, probably not)
+				$this->handle_REMOTE_ADDR_error($ret);
+			}
+			// can't continue; set result false
+			$this->rbl_result = array(false);
+			$this->dbl_result = array(false);
+			return $def;
 		}
 
 		// if $rbl not true, only the checks above are
@@ -4521,12 +4449,15 @@ class Spam_BLIP_widget_class extends WP_Widget {
 	
 
 		$ud  = $this->plinst->get_usedata_option();
-		$bc  = $this->plinst->get_comments_open_option();
-		$bp  = $this->plinst->get_pings_open_option();
-		$inf = false;
-		if ( $ud != 'false' && ($bc != 'false' || $bp != 'false') ) {
+		if ( $ud != 'false' ) {
 			$inf = $this->plinst->get_db_info();
 		}
+		//$bc  = $this->plinst->get_comments_open_option();
+		//$bp  = $this->plinst->get_pings_open_option();
+		//$inf = false;
+		//if ( $ud != 'false' && ($bc != 'false' || $bp != 'false') ) {
+		//	$inf = $this->plinst->get_db_info();
+		//}
 		
 		// note *no default* for title; allow empty title so that
 		// user may place this below another widget with
@@ -4553,7 +4484,8 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			$rn  = $this->plinst->get_rec_non_option();
 			$ps  = $this->plinst->get_rej_not_option();
 			$showopt = false;
-			if ( $bc != 'false' || $bp != 'false' || $br != 'false' ||
+			if ( /*$bc != 'false' || $bp != 'false' ||*/
+				$br != 'false' ||
 				$tw != 'false' || $ps != 'false' ||
 				$bo != 'false' || $ce != 'false' || $rn != 'false' ) {
 				$showopt = true;
@@ -4582,16 +4514,16 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			);
 			echo "\n\t<ul>";
 
-			if ( $bc != 'false' ) {
-				printf("\n\t\t<li>%s</li>",
-					$wt(__('Checking for comment spam', 'spambl_l10n'))
-				);
-			}
-			if ( $bp != 'false' ) {
-				printf("\n\t\t<li>%s</li>",
-					$wt(__('Checking for ping spam', 'spambl_l10n'))
-				);
-			}
+			//if ( $bc != 'false' ) {
+			//	printf("\n\t\t<li>%s</li>",
+			//		$wt(__('Checking for comment spam', 'spambl_l10n'))
+			//	);
+			//}
+			//if ( $bp != 'false' ) {
+			//	printf("\n\t\t<li>%s</li>",
+			//		$wt(__('Checking for ping spam', 'spambl_l10n'))
+			//	);
+			//}
 			if ( $br != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
 					$wt(__('Checking user registration', 'spambl_l10n'))
