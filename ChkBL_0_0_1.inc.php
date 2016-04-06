@@ -40,9 +40,9 @@
 if ( ! class_exists('ChkBL_0_0_1') ) :
 class ChkBL_0_0_1 {
 	// help detect class name conflicts; called by using code
-	private static $evh_opt_id = 0xED00AA33;
+	const evh_opt_id = 0xED00AA33;
 	public static function id_token () {
-		return self::$evh_opt_id;
+		return self::evh_opt_id;
 	}
 
 	// array of default RBL domains:

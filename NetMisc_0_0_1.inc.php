@@ -40,9 +40,9 @@
 if ( ! class_exists('NetMisc_0_0_1') ) :
 class NetMisc_0_0_1 {
 	// help detect class name conflicts; called by using code
-	private static $evh_opt_id = 0xED00AA33;
+	const evh_opt_id = 0xED00AA33;
 	public static function id_token () {
-		return self::$evh_opt_id;
+		return self::evh_opt_id;
 	}
 
 	// take arg in $addr in either CIDR (int) or
