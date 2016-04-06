@@ -3194,6 +3194,7 @@ class Spam_BLIP_class {
 				:
 				__('Invalid remote address; "REMOTE_ADDR" contains "%s"', 'spambl_l10n');
 			self::errlog(sprintf($fmt, $addr));
+			$this->the_result->type = false;
 			return $def;
 		}
 		
