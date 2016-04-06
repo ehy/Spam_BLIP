@@ -2962,8 +2962,12 @@ class Spam_BLIP_class {
 	// helper: get previous BL result, return:
 	// null if no previous result, else the
 	// boolean result (true||false)
-	public function get_rbl_result() {
+	public function get_rbl_result($check = false, $t = 'comments') {
 		if ( $this->the_result->type === null ) {
+			if ( $check ) {
+				$this->do_db_bl_check(true, $t) ;
+				return $this->get_rbl_result();
+			}
 			return null;
 		}
 		if ( $this->the_result->type === false ) {
@@ -3024,13 +3028,7 @@ class Spam_BLIP_class {
 
 		// was rbl check called already? if so,
 		// use stored result
-		$prev = $this->get_rbl_result();
-		
-		// if not done already
-		if ( $prev === null ) {
-			$this->do_db_bl_check(true, 'comments') ;
-			$prev = $this->get_rbl_result();
-		}
+		$prev = $this->get_rbl_result(true, 'comments');
 		
 		if ( $prev !== false ) {
 			if ( self::get_rej_not_option() == 'true' ) {
@@ -3098,13 +3096,7 @@ class Spam_BLIP_class {
 
 		// was rbl check called already? if so,
 		// use stored result
-		$prev = $this->get_rbl_result();
-		
-		// if not done already
-		if ( $prev === null ) {
-			$this->do_db_bl_check(true, 'comments') ;
-			$prev = $this->get_rbl_result();
-		}
+		$prev = $this->get_rbl_result(true, 'comments');
 		
 		if ( $prev !== false ) {
 			if ( self::get_rej_not_option() == 'true' ) {
