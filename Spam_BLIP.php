@@ -2933,7 +2933,8 @@ class Spam_BLIP_class {
 		}
 		
 		if ( ! $this->chkbl ) {
-			self::errlog(__('cannot allocate BL check object', 'spambl_l10n'));
+			self::errlog(
+				__('cannot allocate BL check object', 'spambl_l10n'));
 			return false;
 		}
 		
@@ -2941,9 +2942,15 @@ class Spam_BLIP_class {
 
 		$result = $this->chkbl->check_all($addr, 1);
 		if ( ! empty($result) ) {
+			// result is an array of 1, since 1 was passed to check_all
+			$result = $result[0];
+			$da = $this->chkbl->get_dom_array();
+			$dnsbl = new DNSBLCheckResult(
+				$result[2], $result[1], $da[$result[0]]);
+			
 			$this->the_result->type = "DNSBL";
-			$this->the_result->dat  = $result;
-			$ret = $result[0][2];
+			$this->the_result->dat  = $dnsbl;
+			$ret = $dnsbl->is_hit;
 		} else {
 			// place false in empty array
 			$this->the_result->type = false;
@@ -2962,10 +2969,11 @@ class Spam_BLIP_class {
 		if ( $this->the_result->type === false ) {
 			return false;
 		}
-		if ( is_array($this->the_result->dat[0]) ) {
-			return $this->the_result->dat[0][2];
+
+		if ( $this->the_result->type === "DNSBL" ) {
+			return $this->the_result->dat->is_hit;
 		}
-		return $this->the_result->dat[0];
+		return $this->the_result->dat;
 	}
 
 	// anything scheduled for just before PHP shutdow: WP
@@ -3205,6 +3213,7 @@ class Spam_BLIP_class {
 		if ( $this->chk_user_whitelist($addr, $statype, $pretime) ) {
 			// set the result; checked in various places
 			$this->the_result->type = "WHITELIST";
+			$this->the_result->dat  = false;
 			return $def;
 		}
 
@@ -3215,6 +3224,7 @@ class Spam_BLIP_class {
 			$this->chk_user_blacklist($addr, $statype, $pretime) ) {
 			// set the result; checked in various places
 			$this->the_result->type = "BLACKLIST";
+			$this->the_result->dat  = true;
 			$ret = true;
 		}
 
@@ -3223,6 +3233,7 @@ class Spam_BLIP_class {
 			$this->chk_comments($addr, $statype, (int)$pretime) ) {
 			// set the result; checked in various places
 			$this->the_result->type = "COMMENTS";
+			$this->the_result->dat  = true;
 			$ret = true;
 		}
 
@@ -3237,6 +3248,7 @@ class Spam_BLIP_class {
 			$this->tor_nonhit_opt_whitelist($addr, $rbl) ) {
 			// set the result; checked in various places
 			$this->the_result->type = "TOREXIT";
+			$this->the_result->dat  = false;
 			return $def;
 		}
 		
@@ -3244,6 +3256,7 @@ class Spam_BLIP_class {
 		if ( ! $ret &&
 			$this->chk_db_4_hit($addr, $statype, $pretime) ) {
 			$this->the_result->type = "HITSDB";
+			$this->the_result->dat  = true;
 			$ret = true;
 		}
 
@@ -3333,28 +3346,16 @@ class Spam_BLIP_class {
 				($statype === 'comments' ? $ctxt : $statype);
 
 			$rdat = $this->the_result->dat;
-			if ( is_array($rdat[0]) ) {
-				$doms = $this->chkbl->get_dom_array();
-				$fmt =
-					// TRANSLATORS: %1$s is type "comments" or "pings"
-					// %2$s is IP4 address dotted quad
-					// %3$s is DNS blacklist lookup domain
-					// %4$s is IP4 blacklist lookup result
-					// %5$f is lookup time in seconds (float)
-					__('%1$s denied for address %2$s, list at "%3$s", result %4$s in %5$f', 'spambl_l10n');
-				$fmt = sprintf($fmt, $dtxt, $addr,
-					$doms[ $rdat[0][0] ][0],
-					$rdat[0][1], $difftime);
-				self::errlog($fmt);
-			} else {
-				$fmt =
-					// TRANSLATORS: %1$s is type "comments" or "pings"
-					// %2$s is IP4 address dotted quad
-					// %3$f is lookup time in seconds (float)
-					__('%1$s denied for address %2$s in %3$f', 'spambl_l10n');
-				$fmt = sprintf($fmt, $dtxt, $addr, $difftime);
-				self::errlog($fmt);
-			}
+			$fmt =
+				// TRANSLATORS: %1$s is type "comments" or "pings"
+				// %2$s is IP4 address dotted quad
+				// %3$s is DNS blacklist lookup domain
+				// %4$s is IP4 blacklist lookup result
+				// %5$f is lookup time in seconds (float)
+				__('%1$s denied for address %2$s, list at "%3$s", result %4$s in %5$f', 'spambl_l10n');
+			$fmt = sprintf($fmt, $dtxt, $addr,
+				$rdat->dns_dom, $rdat->dns_ret, $difftime);
+			self::errlog($fmt);
 		}		
 		
 		// optionally die

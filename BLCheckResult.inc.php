@@ -46,9 +46,34 @@ class BLCheckResult {
 	public $dat;			// (null, variable)
 	
 	// ctor
-	public function __construct() {
-		$this->type = null;
-		$this->dat = null;
+	public function __construct($type = null, $dat = null) {
+		$this->type = $type;
+		$this->dat =  $dat;
+	}
+}
+
+/**********************************************************************\
+ * A structure to hold results of DNSBL check -- when structure       *
+ * BLCheckResult->type is "DNSBL",  BLCheckResult->dat should be an   *
+ * instance of DNSBLCheckResult.                                      *
+\**********************************************************************/
+
+class DNSBLCheckResult {
+	// true if return from DNS query passed hit test
+	public $is_hit;			// (boolean)
+
+	// return from DNS
+	public $dns_ret;		// (string [ip address])
+	
+	// the domain used in query
+	public $dns_dom;		// (string [dns domain])
+	
+	// ctor
+	public function __construct(
+					$is_hit = null, $dns_ret = null, $dns_dom = null) {
+		$this->is_hit  = $is_hit;
+		$this->dns_ret = $dns_ret;
+		$this->dns_dom = $dns_dom;
 	}
 }
 
