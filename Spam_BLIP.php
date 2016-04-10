@@ -2946,7 +2946,7 @@ class Spam_BLIP_class {
 			$result = $result[0];
 			$da = $this->chkbl->get_dom_array();
 			$dnsbl = new DNSBLCheckResult(
-				$result[2], $result[1], $da[$result[0]]);
+				$result[2], $result[1], $da[$result[0]][0]);
 			
 			$this->the_result->type = "DNSBL";
 			$this->the_result->dat  = $dnsbl;
