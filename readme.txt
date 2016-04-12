@@ -117,6 +117,8 @@ Think 'BLacklist IP'.
 = 1.0.7 =
 * Check with WordPress 4.5.
 * Widget update for theme preview selective refresh.
+* Simplify by removing options for comments/pings_open, and
+  bailout.
 
 = 1.0.6 =
 * Check with WordPress 4.3.
@@ -178,6 +180,8 @@ Think 'BLacklist IP'.
 = 1.0.7 =
 * Check with WordPress 4.5.
 * Widget update for theme preview selective refresh.
+* Simplify by removing options for comments/pings_open, and
+  bailout.
 
 = 1.0.6 =
 * Check with WordPress 4.3.

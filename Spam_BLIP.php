@@ -167,8 +167,6 @@ class Spam_BLIP_class {
 	const optipnglog = 'ip_ng';
 	// log blacklist hits?
 	const optbliplog = 'log_hit';
-	// bail out (wp_die()) on blacklist hits?
-	const optbailout = 'bailout';
 	// optional active RBL domains
 	const opteditrbl = 'sp_bl_editrbl';
 	// optional inactive (reserved) RBL domains
@@ -197,10 +195,6 @@ class Spam_BLIP_class {
 	const defverbose = 'true';
 	// this is hidden in settings page; used w/ JS for 'screen options'
 	const defscreen1 = 'true';
-	// filter comments_open?
-	const defcommflt = 'true';
-	// filter pingss_open?
-	const defpingflt = 'true';
 	// filter new user registration (optionally required to comment)?
 	const defregiflt = 'false';
 	// pass, or 'whitelist', TOR exit nodes?
@@ -230,8 +224,6 @@ class Spam_BLIP_class {
 	const defipnglog = 'true';
 	// log blacklist hits?
 	const defbliplog = 'false';
-	// bail out (wp_die()) on blacklist hits?
-	const defbailout = 'false';
 	// optional active RBL domains
 	const defeditrbl = '';
 	// optional inactive (reserved) RBL domains
@@ -377,7 +369,6 @@ class Spam_BLIP_class {
 				self::optplugwdg => self::defplugwdg,
 				self::optipnglog => self::defipnglog,
 				self::optbliplog => self::defbliplog,
-				self::optbailout => self::defbailout,
 				self::optdelopts => self::defdelopts,
 				self::optdelstor => self::defdelstor
 			);
@@ -398,7 +389,6 @@ class Spam_BLIP_class {
 			self::optplugwdg => self::defplugwdg,
 			self::optipnglog => self::defipnglog,
 			self::optbliplog => self::defbliplog,
-			self::optbailout => self::defbailout,
 			self::opteditrbl => self::defeditrbl,
 			self::opteditrbr => self::defeditrbr,
 			self::opteditwhl => self::defeditwhl,
@@ -561,11 +551,6 @@ class Spam_BLIP_class {
 				self::optbliplog,
 				$items[self::optbliplog],
 				array($this, 'put_bliplog_opt'));
-		$fields[$nf++] = new $Cf(self::optbailout,
-				self::wt(__('Bail out on blacklisted IP:', 'spambl_l10n')),
-				self::optbailout,
-				$items[self::optbailout],
-				array($this, 'put_bailout_opt'));
 
 		// misc
 		$sections[$ns++] = new $Cs($fields,
@@ -1610,7 +1595,6 @@ class Spam_BLIP_class {
 				case self::optplugwdg:
 				case self::optipnglog:
 				case self::optbliplog:
-				case self::optbailout:
 				case self::optdelopts:
 				case self::optdelstor:
 					if ( $ot != 'true' && $ot != 'false' ) {
@@ -1953,19 +1937,6 @@ class Spam_BLIP_class {
 			in the error log. New plugin users might like to
 			enable this temporarily to see the effect the plugin
 			has had.', 'spambl_l10n'));
-		printf('<p>%s</p>%s', $t, "\n");
-
-		$t = self::wt(__('The "Bail out on blacklisted IP"
-			option will have the plugin terminate the blog output
-			when the connecting IP address is blacklisted. The
-			default is to only disable comments, and allow the
-			page to be produced normally. This option will save
-			some amount of network load,
-			and spammers do not want or need your
-			content anyway, but if there is a rare false positive,
-			the visitor, also a spam victim in this case, will
-			miss your content.
-			', 'spambl_l10n'));
 		printf('<p>%s</p>%s', $t, "\n");
 
 		echo '</div>';
@@ -2445,13 +2416,6 @@ class Spam_BLIP_class {
 		$this->put_single_checkbox($a, $k, $tt);
 	}
 
-	// callback, die blacklist hits?
-	public function put_bailout_opt($a) {
-		$tt = self::wt(__('Bail (wp_die()) on blacklist hits', 'spambl_l10n'));
-		$k = self::optbailout;
-		$this->put_single_checkbox($a, $k, $tt);
-	}
-
 	// callback, put textarea pair for user whitelist
 	public function put_editwhl_opt($a) {
 		$gr = self::opt_group;
@@ -2736,7 +2700,9 @@ class Spam_BLIP_class {
 
 	// for whether to die on BL hits
 	public static function get_bailout_option() {
-		return self::opt_by_name(self::optbailout);
+		// bailout option removed
+		//return self::opt_by_name(self::optbailout);
+		return 'true';
 	}
 
 	// for whether to store hit data
@@ -4234,14 +4200,13 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			// get some options to show if true
 			$br  = $this->plinst->get_user_regi_option();
 			$tw  = $this->plinst->get_torwhite_option();
-			$bo  = $this->plinst->get_bailout_option();
 			$ce  = $this->plinst->get_chkexist_option();
 			$rn  = $this->plinst->get_rec_non_option();
 			$ps  = $this->plinst->get_rej_not_option();
 			$showopt = false;
 			if ( $br != 'false' ||
 				 $tw != 'false' || $ps != 'false' ||
-				 $bo != 'false' || $ce != 'false' || $rn != 'false' ) {
+				 $ce != 'false' || $rn != 'false' ) {
 				 $showopt = true;
 			}
 		}
@@ -4276,11 +4241,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			if ( $ce != 'false' ) {
 				printf("\n\t\t<li>%s</li>",
 					$wt(__('Checking in saved spam', 'spambl_l10n'))
-				);
-			}
-			if ( $bo != 'false' ) {
-				printf("\n\t\t<li>%s</li>",
-					$wt(__('Bailing out on hits', 'spambl_l10n'))
 				);
 			}
 			if ( $rn != 'false' ) {
