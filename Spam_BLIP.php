@@ -3,7 +3,7 @@
 Plugin Name: Spam BLIP
 Plugin URI: //agalena.nfshost.com/b1/software/spam-blip-wordpress-comment-spam-plugin/
 Description: Stop comment spam before it is posted.
-Version: 1.0.7
+Version: 1.0.7.1
 Author: Ed Hynan
 Author URI: //agalena.nfshost.com/b1/
 License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
@@ -128,7 +128,7 @@ class Spam_BLIP_class {
 	const plugin_webpage = '//agalena.nfshost.com/b1/software/spam-blip-wordpress-comment-spam-plugin/';
 	
 	// this version
-	const plugin_version = '1.0.7';
+	const plugin_version = '1.0.7.1';
 	
 	// the widget class name
 	const Spam_BLIP_plugin_widget = 'Spam_BLIP_widget_class';
