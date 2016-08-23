@@ -3,7 +3,7 @@
 Plugin Name: Spam BLIP
 Plugin URI: //agalena.nfshost.com/b1/software/spam-blip-wordpress-comment-spam-plugin/
 Description: Stop comment spam before it is posted.
-Version: 1.0.7.1
+Version: 1.0.8
 Author: Ed Hynan
 Author URI: //agalena.nfshost.com/b1/
 License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
@@ -128,7 +128,7 @@ class Spam_BLIP_class {
 	const plugin_webpage = '//agalena.nfshost.com/b1/software/spam-blip-wordpress-comment-spam-plugin/';
 	
 	// this version
-	const plugin_version = '1.0.7.1';
+	const plugin_version = '1.0.8';
 	
 	// the widget class name
 	const Spam_BLIP_plugin_widget = 'Spam_BLIP_widget_class';
@@ -343,7 +343,7 @@ class Spam_BLIP_class {
 		// it's not enough to add this action in the activation hook;
 		// that alone does not work.  IAC administrative
 		// {de,}activate also controls the widget
-		add_action('widgets_init', array($cl, 'regi_widget'));//, 1);
+		add_action('widgets_init', array($cl, 'regi_widget'));
 	}
 
 	public function __destruct() {
@@ -3598,9 +3598,6 @@ class Spam_BLIP_class {
 	protected function db_delete_table() {
 		global $wpdb;
 		$tbl = $this->db_tablename();
-		// 'IF EXISTS' should suppress error if never created
-		// drop table removes associated files and data,
-		// indices and format, too
 		return $wpdb->query("DROP TABLE IF EXISTS {$tbl}");
 	}
 	
@@ -3855,8 +3852,7 @@ EOQ;
 		return 100;
 	}
 
-	// delete record from address -- uses method
-	// added in WP 3.4.0
+	// delete record from address
 	protected function db_remove_address($addr, $lock = true) {
 		if ( $this->db_get_addr_cache !== null
 			&& $this->db_get_addr_cache[0] === $addr ) {
@@ -4217,7 +4213,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			printf("%s%s%s\n", $before_title, $title, $after_title);
 		}
 
-		// use no class, but do use deprecated align
 		$code = sprintf('Spam_BLIP_widget_%06u', rand());
 		// overdue: 1.0.4 removed deprecated align
 		$dv = '<div id="'.$code.'" class="widget">';
@@ -4378,7 +4373,6 @@ class Spam_BLIP_widget_class extends WP_Widget {
 			);
 		}
 		if ( $cap ) {
-			// overdue: 1.0.4 removed deprecated align
 			echo '<p><span>' . $wt($cap) . '</span></p>';
 		}
 		echo "\n</div>\n";

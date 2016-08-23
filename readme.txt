@@ -3,8 +3,8 @@ Contributors: EdHynan
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick%DONATE_LINK%hosted_button_id=4Q2Y8ZUG8HXLC
 Tags: anti-spam, comment spam, spam comments, blog spam, spam, blog, comment, comments, content, links, network
 Requires at least: 3.0.2
-Tested up to: 4.5
-Stable tag: 1.0.7.1
+Tested up to: 4.6
+Stable tag: 1.0.8
 Text Domain: spambl_l10n
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -114,6 +114,10 @@ Think 'BLacklist IP'.
 
 == Changelog ==
 
+= 1.0.8 =
+* Check with WordPress 4.6.
+* Misc. cleanups in code.
+
 = 1.0.7.1 =
 * Correct error in repository checkin of 1.0.7.
 
@@ -179,6 +183,10 @@ Think 'BLacklist IP'.
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.8 =
+* Check with WordPress 4.6.
+* Misc. cleanups in code.
 
 = 1.0.7.1 =
 * Correct error in repository checkin of 1.0.7.

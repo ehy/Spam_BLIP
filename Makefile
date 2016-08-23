@@ -1,7 +1,7 @@
 #! /usr/bin/make -f
 # License: GNU GPLv3 (see http://www.gnu.org/licenses/gpl-3.0.html)
 
-PRJVERS = 1.0.7.1
+PRJVERS = 1.0.8
 PRJSTEM = Spam_BLIP
 PRJNAME = $(PRJSTEM)-$(PRJVERS)
 
@@ -60,7 +60,7 @@ ${PRJZIP}: ${JSBIN} ${ZALL} ${LCFPO}
 	test -e ttd && mv ttd ${PRJDIR}; ls -l ${PRJZIP}
 
 # NOTE: Non-trivial JS broken by perl 'JavaScript::Packer'
-# (another package) so its use is remove; JavaScript::Minifier::XS
+# (another package) so its use is removed; JavaScript::Minifier::XS
 # is new here (Ubuntu GNU/Linux)
 ${JSBIN}: ${JSSRC}
 	O=$@; I=$${O%%.*}.js; \
