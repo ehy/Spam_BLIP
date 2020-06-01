@@ -560,7 +560,7 @@ class ChkBL_0_0_1 {
 }
 endif; // if ( ! class_exists() ) :
 
-if ( php_sapi_name() === 'cli' ) {
+if ( php_sapi_name() === 'cli' && defined('ALLOW_CLI_TEST') ) {
 	$doms = ChkBL_0_0_1::get_all_domain_array(true);
 	$t = new ChkBL_0_0_1($doms, false);
 	$doms = $t->get_dom_array();
